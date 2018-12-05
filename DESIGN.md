@@ -89,3 +89,30 @@ confusion - see this example:
 - 1: Decrement on y
 
 x has conflict, but, y is still valid and can be merged without any problem.
+
+But what if these exist?:
+
+- Increment on both x, y
+- Decrement on both x, y
+- Set count on both x, y
+
+These act on both scope, so the conflict will occur in the same condition.
+
+Note that conflict should always occur when the action is not commutative - so
+mainly two action will exist.
+
+## Action ID
+The application, or avcs, must provide a way to dispense unique IDs, and attach
+those IDs into every action.
+
+When merging, those IDs should be checked if it was seen before, and not merge
+them if we've encountered them before.
+
+This gets pretty dirty when 3 or more nodes are present - it'll be tedious to
+check.
+
+A naive method is to store every seen action IDs, and not run them if we've
+seen it before.
+
+Prehaps, it should be possible to not do that, if we only have to see 'merge
+points'.
