@@ -101,6 +101,31 @@ These act on both scope, so the conflict will occur in the same condition.
 Note that conflict should always occur when the action is not commutative - so
 mainly two action will exist.
 
+### Commutative failure
+What if there is multiply and divide? They're commutative, but, they can't
+coexist with increment / subtract. I couldn't find any real world tasks like
+this, but in order to support this, we should also support commutative group.
+
+## Conflict handling
+When a conflict is detected, it can show error, but eventually it has to be
+resolved - it needs to provide a facility to detect, and merge errors.
+
+As a replication protocol, merging method shouldn't be only known to 2 nodes -
+it MUST be shared between nodes. This can be done by making conflict resolution
+algorithm to be deterministic.
+
+However, to support user intervention, this is not possible. Therefore, we must
+log confliction merging methods.
+
+Confliction resolution can be asynchronous - it may need to access data store,
+ask the user, etc.
+
+The application must be careful to derive the same result between nodes - Since
+avcs doesn't know about state, it's the application's duty to keep them intact.
+
+Basically, conflict resolution should follow [Operational Transformation](https://en.wikipedia.org/wiki/Operational_transformation),
+since two different states should be merged into one by firing correct actions.
+
 ## Action ID
 The application, or avcs, must provide a way to dispense unique IDs, and attach
 those IDs into every action.
