@@ -126,6 +126,14 @@ avcs doesn't know about state, it's the application's duty to keep them intact.
 Basically, conflict resolution should follow [Operational Transformation](https://en.wikipedia.org/wiki/Operational_transformation),
 since two different states should be merged into one by firing correct actions.
 
+### Conflict merge replication
+When conflict is merged between two nodes, its result should be propagated to
+other nodes.
+
+Since conflict handler must make two node's data same, for other clients,
+they can choose whatever path they want and they should end up in the same
+point, thus ignoring conflicted path.
+
 ## Action ID
 The application, or avcs, must provide a way to dispense unique IDs, and attach
 those IDs into every action.
