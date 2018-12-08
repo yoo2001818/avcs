@@ -149,3 +149,12 @@ seen it before.
 
 Prehaps, it should be possible to not do that, if we only have to see 'merge
 points'.
+
+## Replication protocol
+In order to replicate the database, we need to make a protocol.
+
+1. Find the greatest common parent action.
+2. Exchange the actions.
+3. Run actions in any order if conflict has not occurred.
+4. Add amending actions by running application code if conflict has occurred.
+
