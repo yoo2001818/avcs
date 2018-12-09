@@ -158,3 +158,17 @@ In order to replicate the database, we need to make a protocol.
 3. Run actions in any order if conflict has not occurred.
 4. Add amending actions by running application code if conflict has occurred.
 
+Replication itself cannot be performed as master-master model, thus it should
+be server-client model. This is required because only one node should determine
+the merging method, since it can be non-deterministic.
+
+### Finding the greatest common parent action
+Before merging, we must find the range to perform the work - that is, actions
+after common parent action.
+
+Server should send first N actions from the latest action, if client has found
+mutual action, merging will start from there. If not found, server will send
+N more actions, until the mutual action is found.
+
+Since merging order is not guaranteed, if diverging actions has occurred too
+much, it would fetch useless actions.
