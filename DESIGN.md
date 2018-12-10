@@ -134,6 +134,40 @@ Since conflict handler must make two node's data same, for other clients,
 they can choose whatever path they want and they should end up in the same
 point, thus ignoring conflicted path.
 
+### Conflict eviction
+While conflict can happen in multiple scopes, they usually don't have to see
+each other.
+
+Let's begin with this scenario.
+
+- A: increment on X
+- B: increment on Y
+- A: set Y to 0
+- B: set X to 3
+
+While X and Y both have conflictions, they're independent - they don't have to
+see each other, as they're associative - they don't care if they get merged
+in any order.
+
+Therefore, confliction handler can run twice, with domain for X and Y.
+
+But, what if both X and Y gets written?
+
+- A: increment on X
+- B: increment on Y
+- A: set Y to 0
+- B: set X and Y to 3
+
+Since we can't ensure that actions are idempotent, running twice - is not an
+option.
+
+Therefore, in this case, avcs should just call confliction handler with
+all these actions.
+
+This can be a problem if a user issues an action that applies to the entire
+data storage. But since it's impossible to resolve inside here, the application
+code is reponsible for such cases.
+
 ## Action ID
 The application, or avcs, must provide a way to dispense unique IDs, and attach
 those IDs into every action.
@@ -149,6 +183,9 @@ seen it before.
 
 Prehaps, it should be possible to not do that, if we only have to see 'merge
 points'.
+
+## Undo Log
+avcs should natively support undo logs; it's required for rollbacks.
 
 ## Replication protocol
 In order to replicate the database, we need to make a protocol.
