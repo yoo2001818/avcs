@@ -209,3 +209,24 @@ N more actions, until the mutual action is found.
 
 Since merging order is not guaranteed, if diverging actions has occurred too
 much, it would fetch useless actions.
+
+### Exchanging actions
+Once the mutual action has found, it should start fetching all the actions from 
+there.
+
+After fetching, it should run merge handler by comparing with local action log.
+
+Local action logs are not discarded - special 'merger action' gets written
+on the top of it, which should make the action logs even.
+
+Remote action log's side is also written to merge with local action logs.
+
+After finishing merge, all the histories are sent back to the server.
+
+### Limitations
+As the new entries cannot be written while merging, this algorithm should be
+locked. Or, it must run merge again after merging (local-local merge).
+
+# Wrapping up
+All right! All the requirements to build avcs are resolved. From this section,
+let's try to build a specification for avcs.
