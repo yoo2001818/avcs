@@ -230,3 +230,26 @@ locked. Or, it must run merge again after merging (local-local merge).
 # Wrapping up
 All right! All the requirements to build avcs are resolved. From this section,
 let's try to build a specification for avcs.
+
+## Action
+```ts
+type UUID = string;
+
+type Action = {
+  id: UUID,
+  type: string,
+  value: any,
+};
+```
+
+### Normal actions
+- getScopes(action: Action): (string | number)[][]
+- getModifyType(action: Action): null | string
+
+```ts
+type NormalAction = Action & {
+};
+```
+
+## Merge
+- merge(offendingScope: (string | number)[][], local: Action[], remote: Action[]): Promise<{ local: Action[], remote: Action[] }>
