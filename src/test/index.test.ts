@@ -1,5 +1,3 @@
 describe('Test', () => {
-  it('should do nothing', () => {
-    
-  });
+  it('should do nothing', () => undefined);
 });

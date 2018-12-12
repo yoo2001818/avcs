@@ -8,7 +8,7 @@
     "jest": "jest --forceExit --coverage --verbose",
     "build": "tsc",
     "watch": "tsc -w",
-    "tslint": "tslint -c tslint.js -p tsconfig.json"
+    "tslint": "tslint -c tslint.json -p tsconfig.json"
   },
   "repository": {
     "type": "git",
