@@ -1,0 +1,33 @@
+{
+  "name": "avcs",
+  "version": "0.1.0",
+  "description": "Version control system library for arbitrary data synchronization",
+  "main": "index.js",
+  "scripts": {
+    "test": "npm run jest && npm run tslint",
+    "jest": "jest --forceExit --coverage --verbose",
+    "build": "tsc",
+    "watch": "tsc -w",
+    "tslint": "tslint -c tslint.js -p tsconfig.json"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yoo2001818/avcs.git"
+  },
+  "author": "Duknam Yoo",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/yoo2001818/avcs/issues"
+  },
+  "homepage": "https://github.com/yoo2001818/avcs#readme",
+  "devDependencies": {
+    "@types/jest": "^23.3.10",
+    "@types/node": "^10.12.12",
+    "jest": "^23.6.0",
+    "ts-jest": "^23.10.5",
+    "ts-node": "^7.0.1",
+    "tslint": "^5.11.0",
+    "tslint-config-standard": "^8.0.1",
+    "typescript": "^3.2.2"
+  }
+}
