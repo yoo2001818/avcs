@@ -15,7 +15,7 @@ export async function merge(
   offendingScope: string[][], local: Action[], remote: Action[],
 ) {
   return {
-    local: [] as Action[],
-    remote: [] as Action[],
+    local: remote as Action[],
+    remote: local as Action[],
   };
 }
