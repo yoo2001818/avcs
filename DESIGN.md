@@ -187,6 +187,27 @@ points'.
 ## Undo Log
 avcs should natively support undo logs; it's required for rollbacks.
 
+## Storing actions
+Since the action has to be merged between nodes, actions are not addressable
+using single continuous list. (It may be possible before merging with any
+other nodes, but in conslusion, it has to be converted into graph model.)
+
+Therefore, action log should be a graph model, which should be navigatiable into
+past (reverse direction is not possible).
+
+```
+o-o-o-o-o-o-o
+  +-o-o-+
+```
+
+Since merging requires creating a stack to navigate to the common node, this
+shouldn't be a problem.
+
+After replicating, many 'shadow' actions will be left - actions that were
+created by merging algorithm. These are used for replication for other nodes,
+however, only single branch has to be executed, and if they're present - merging
+error shouldn't occur.
+
 ## Replication protocol
 In order to replicate the database, we need to make a protocol.
 
