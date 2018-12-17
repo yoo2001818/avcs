@@ -208,6 +208,15 @@ created by merging algorithm. These are used for replication for other nodes,
 however, only single branch has to be executed, and if they're present - merging
 error shouldn't occur.
 
+### Main branch and other branches
+Main branch should be stored, however, other branches must be stored as well.
+This can be achieved by using linked lists, as describe above.
+
+#### Node catching up to the main branch
+Node catching up to the main branch, i.e. fast-forwarding after merging,
+should use one of any branches if available. However, since any branch can be
+used, 'first' one recorded in the action can be used.
+
 ## Replication protocol
 In order to replicate the database, we need to make a protocol.
 
