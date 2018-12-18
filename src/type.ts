@@ -1,4 +1,9 @@
-type Action = { type: string } & { [key: string]: any };
+type Action = {
+  id: string,
+  type: string,
+  shadow: boolean,
+  parents: string[],
+};
 type ActionScope = {
   keys: (string | number)[],
   modifyType: number | null,
@@ -12,6 +17,9 @@ type MachineConfig = {
   run: (action: Action) => Promise<UndoValue>,
   undo: (action: Action, undoValue: UndoValue) => Promise<void>,
   storeAction: (action: Action, undoValue: UndoValue) => Promise<void>,
+  getCurrentAction: () => Promise<Action>,
+  getAction: (id: string) => Promise<Action>,
+  setCurrentAction: (id: string) => Promise<void>,
 };
 
 interface Machine {
