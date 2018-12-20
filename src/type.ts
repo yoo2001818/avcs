@@ -1,8 +1,8 @@
-type Action = {
+type Action<T> = {
   id: string,
-  type: string,
-  shadow: boolean,
+  type: 'action' | 'undo' | 'merge' | 'shadow',
   parents: string[],
+  payload: T,
 };
 type ActionScope = {
   keys: (string | number)[],
@@ -10,25 +10,25 @@ type ActionScope = {
 };
 type UndoValue = any;
 
-type MachineConfig = {
-  getActionScopes: (action: Action) => ActionScope[],
-  merge: (offending: ActionScope, local: Action[], remote: Action) =>
-    Promise<{ local: Action[], remote: Action[] }>,
-  run: (action: Action) => Promise<UndoValue>,
-  undo: (action: Action, undoValue: UndoValue) => Promise<void>,
-  storeAction: (action: Action, undoValue: UndoValue) => Promise<void>,
-  getCurrentAction: () => Promise<Action>,
-  getAction: (id: string) => Promise<Action>,
+type MachineConfig<T> = {
+  getActionScopes: (action: Action<T>) => ActionScope[],
+  merge: (offending: ActionScope, local: Action<T>[], remote: Action<T>) =>
+    Promise<{ local: Action<T>[], remote: Action<T>[] }>,
+  run: (action: Action<T>) => Promise<UndoValue>,
+  undo: (action: Action<T>, undoValue: UndoValue) => Promise<void>,
+  storeAction: (action: Action<T>, undoValue: UndoValue) => Promise<void>,
+  getCurrentAction: () => Promise<Action<T>>,
+  getAction: (id: string) => Promise<Action<T>>,
   setCurrentAction: (id: string) => Promise<void>,
 };
 
-type SyncAPISet = {
+type SyncRPCSet<T> = {
   fetchMore: (lastId?: string) => Promise<void>,
-  submit: (ourActions: Action[], theirActions: Action[]) => Promise<void>,
+  submit: (ourActions: Action<T>[], theirActions: Action<T>[]) => Promise<void>,
 };
 
-interface Machine {
-  run(action: Action): Promise<void>;
+interface Machine<T> {
+  run(action: Action<T>): Promise<void>;
   // Sync protocol is the following:
   // 0. If we know the common parent, we can rewind and put into stack until
   //    it is met.
@@ -48,5 +48,5 @@ interface Machine {
   // The problem is, to fetch common parent, we have to continously fetch from
   // the remote point.
   // To handle this, we make sync function to accept networking function set.
-  sync(api: SyncAPISet): Promise<void>;
+  sync(rpc: SyncRPCSet<T>): Promise<void>;
 }
