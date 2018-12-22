@@ -1,12 +1,26 @@
-import { MachineConfig, SyncRPCSet } from './type';
+import randomstring from 'randomstring';
+import { Action, MachineConfig, SyncRPCSet } from './type';
 
 export default class Machine<T> {
   config: MachineConfig<T>;
   constructor(config: MachineConfig<T>) {
     this.config = config;
   }
-  async run(action: T): Promise<void> {
+  generateId(): string {
+    return randomstring.generate();
+  }
+  async run(payload: T): Promise<void> {
     // Run and record the action into the system.
+    const currentAction = await this.config.getCurrentAction();
+    const newAction: Action<T> = {
+      payload,
+      id: this.generateId(),
+      type: 'action',
+      parents: [currentAction.id],
+    };
+    const undoResult = await this.config.run(payload);
+    await this.config.storeAction(newAction, undoResult);
+    await this.config.setCurrentAction(newAction.id);
   }
   async sync(rpc: SyncRPCSet<T>): Promise<void> {
     // Sync protocol is the following:

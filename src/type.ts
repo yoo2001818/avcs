@@ -14,8 +14,8 @@ export type MachineConfig<T> = {
   getActionScopes: (action: Action<T>) => ActionScope[],
   merge: (offending: ActionScope, local: Action<T>[], remote: Action<T>) =>
     Promise<{ local: Action<T>[], remote: Action<T>[] }>,
-  run: (action: Action<T>) => Promise<UndoValue>,
-  undo: (action: Action<T>, undoValue: UndoValue) => Promise<void>,
+  run: (payload: T) => Promise<UndoValue>,
+  undo: (payload: T, undoValue: UndoValue) => Promise<void>,
   storeAction: (action: Action<T>, undoValue: UndoValue) => Promise<void>,
   getCurrentAction: () => Promise<Action<T>>,
   getAction: (id: string) => Promise<Action<T>>,
