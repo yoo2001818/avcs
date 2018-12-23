@@ -1,28 +1,34 @@
-export type Action<T> = {
+export type Action<T, U> = {
   id: string,
   type: 'action' | 'undo' | 'merge' | 'shadow',
   parents: string[],
   payload: T,
+  undoValue: U,
 };
 export type ActionScope = {
   keys: (string | number)[],
   modifyType: number | null,
 };
-export type UndoValue = any;
 
-export type MachineConfig<T> = {
-  getActionScopes: (action: Action<T>) => ActionScope[],
-  merge: (offending: ActionScope, local: Action<T>[], remote: Action<T>) =>
-    Promise<{ local: Action<T>[], remote: Action<T>[] }>,
-  run: (payload: T) => Promise<UndoValue>,
-  undo: (payload: T, undoValue: UndoValue) => Promise<void>,
-  storeAction: (action: Action<T>, undoValue: UndoValue) => Promise<void>,
-  getCurrentAction: () => Promise<Action<T>>,
-  getAction: (id: string) => Promise<Action<T>>,
+export type MachineConfig<T, U> = {
+  getActionScopes: (action: Action<T, U>) => ActionScope[],
+  merge: (
+    offending: ActionScope,
+    local: Action<T, U>[],
+    remote: Action<T, U>[],
+  ) => Promise<{ local: Action<T, U>[], remote: Action<T, U>[] }>,
+  //
+  run: (payload: T) => Promise<U>,
+  undo: (payload: T, undoValue: U) => Promise<void>,
+  //
+  storeAction: (action: Action<T, U>) => Promise<void>,
+  getCurrentAction: () => Promise<Action<T, U>>,
+  getAction: (id: string) => Promise<Action<T, U>>,
   setCurrentAction: (id: string) => Promise<void>,
 };
 
-export type SyncRPCSet<T> = {
+export type SyncRPCSet<T, U> = {
   fetchMore: (lastId?: string) => Promise<void>,
-  submit: (ourActions: Action<T>[], theirActions: Action<T>[]) => Promise<void>,
+  submit: (ourActions: Action<T, U>[], theirActions: Action<T, U>[]) =>
+    Promise<void>,
 };

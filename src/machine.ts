@@ -1,28 +1,46 @@
 import randomstring from 'randomstring';
 import { Action, MachineConfig, SyncRPCSet } from './type';
 
-export default class Machine<T> {
-  config: MachineConfig<T>;
-  constructor(config: MachineConfig<T>) {
+export default class Machine<T, U> {
+  config: MachineConfig<T, U>;
+  constructor(config: MachineConfig<T, U>) {
     this.config = config;
   }
   generateId(): string {
     return randomstring.generate();
   }
-  async run(payload: T): Promise<void> {
+  async run(payload: T): Promise<string> {
     // Run and record the action into the system.
     const currentAction = await this.config.getCurrentAction();
-    const newAction: Action<T> = {
+    const undoValue = await this.config.run(payload);
+    const newAction: Action<T, U> = {
       payload,
+      undoValue,
       id: this.generateId(),
       type: 'action',
       parents: [currentAction.id],
     };
-    const undoResult = await this.config.run(payload);
-    await this.config.storeAction(newAction, undoResult);
+    await this.config.storeAction(newAction);
     await this.config.setCurrentAction(newAction.id);
+    return newAction.id;
   }
-  async sync(rpc: SyncRPCSet<T>): Promise<void> {
+  async undoLast(): Promise<string> {
+    const action = await this.config.getCurrentAction();
+    await this.config.undo(action.payload, action.undoValue);
+    // TODO Check if we've been synchronized since then - remove the action
+    // if the action hasn't shared with any other nodes
+    const newAction: Action<T, U> = {
+      payload: action.payload,
+      undoValue: action.undoValue,
+      id: this.generateId(),
+      type: 'action',
+      parents: [action.id],
+    };
+    await this.config.storeAction(newAction);
+    await this.config.setCurrentAction(newAction.id);
+    return newAction.id;
+  }
+  async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
     // 0. If we know the common parent, we can rewind and put into stack until
     //    it is met.
