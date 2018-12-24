@@ -40,6 +40,23 @@ export default class Machine<T, U> {
     await this.config.setCurrentAction(newAction.id);
     return newAction.id;
   }
+  async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
+    let action: Action<T, U>;
+    if (startId != null) {
+      action = await this.config.getAction(startId);
+    } else {
+      action = await this.config.getCurrentAction();
+    }
+    while (action != null) {
+      yield action;
+      const parentId = action.parents[0];
+      if (parentId == null) {
+        break;
+      } else {
+        action = await this.config.getAction(parentId);
+      }
+    }
+  }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
     // 0. If we know the common parent, we can rewind and put into stack until
