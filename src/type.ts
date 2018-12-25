@@ -28,7 +28,7 @@ export type MachineConfig<T, U> = {
 };
 
 export type SyncRPCSet<T, U> = {
-  fetchMore: (lastId?: string) => Promise<void>,
+  fetchMore: (lastId?: string) => Promise<Action<T, U>[]>,
   submit: (ourActions: Action<T, U>[], theirActions: Action<T, U>[]) =>
     Promise<void>,
 };

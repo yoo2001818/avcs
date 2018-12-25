@@ -77,5 +77,10 @@ export default class Machine<T, U> {
     // The problem is, to fetch common parent, wehave to continously fetch from
     // the remote point.
     // To handle this, we make sync function to accept networking function set.
+    let localStack: Action<T, U>[] = [];
+    let remoteStack: Action<T, U>[] = [];
+    let seenTable: { [key: string]: boolean } = {};
+    let remoteLastId: string = null;
+    (await rpc.fetchMore(remoteLastId)).forEach(v => remoteStack.push(v));
   }
 }
