@@ -57,6 +57,27 @@ export default class Machine<T, U> {
       }
     }
   }
+  async getDivergingPath(
+    left: AsyncIterator<Action<T, U>>, right: AsyncIterator<Action<T, U>>,
+  ): Promise<{ left: Action<T, U>[], right: Action<T, U>[] }> {
+    let leftStack: Action<T, U>[] = [];
+    let rightStack: Action<T, U>[] = [];
+    let seenTable: { [key: string]: number } = {};
+    while (true) {
+      let currentLeft = (await left.next()).value;
+      let currentRight = (await right.next()).value;
+      if (currentLeft == null || currentRight == null) break;
+      if (seenTable[currentLeft.id]) {
+        leftStack.push(currentLeft);
+        rightStack = rightStack.slice(0, seenTable[currentLeft.id]);
+      } else if (seenTable[currentRight.id]) {
+        rightStack.push(currentRight);
+      } else {
+        leftStack.push(currentLeft);
+        rightStack.push(currentRight);
+      }
+    }
+  }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
     // 0. If we know the common parent, we can rewind and put into stack until
