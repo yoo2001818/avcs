@@ -24,21 +24,22 @@ export default class Machine<T, U> {
     await this.config.setCurrentAction(newAction.id);
     return newAction.id;
   }
-  async undoLast(): Promise<string> {
+  async undoLast(): Promise<void> {
     const action = await this.config.getCurrentAction();
-    await this.config.undo(action.payload, action.undoValue);
-    // TODO Check if we've been synchronized since then - remove the action
-    // if the action hasn't shared with any other nodes
-    const newAction: Action<T, U> = {
-      payload: action.payload,
-      undoValue: action.undoValue,
-      id: this.generateId(),
-      type: 'action',
-      parents: [action.id],
-    };
-    await this.config.storeAction(newAction);
-    await this.config.setCurrentAction(newAction.id);
-    return newAction.id;
+    // TODO Transactions
+    await this.forceUndo(action);
+    await this.config.setCurrentAction(action.parents[0]);
+  }
+  async forceUndo(action: Action<T, U>): Promise<void> {
+    switch (action.type) {
+      case 'action':
+        return this.config.undo(action.payload, action.undoValue);
+      case 'undo':
+        await this.config.run(action.payload);
+        return;
+      case 'merge':
+        return;
+    }
   }
   async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
     let action: Action<T, U>;
@@ -87,6 +88,15 @@ export default class Machine<T, U> {
       left: leftStack,
       right: rightStack,
     };
+  }
+  async jumpTo(targetId: string): Promise<void> {
+    // Get diverging path for the action, then undo on left / proceed on right.
+    const { left, right } = await this.getDivergingPath(
+      this.getHistory(), this.getHistory(targetId));
+    for (let i = 0; i < left.length; i += 1) {
+      await this.forceUndo(left[i]);
+    }
+    // TODO redo
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
