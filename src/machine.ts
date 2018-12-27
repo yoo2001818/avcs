@@ -62,21 +62,31 @@ export default class Machine<T, U> {
   ): Promise<{ left: Action<T, U>[], right: Action<T, U>[] }> {
     let leftStack: Action<T, U>[] = [];
     let rightStack: Action<T, U>[] = [];
-    let seenTable: { [key: string]: number } = {};
+    const seenTable: { [key: string]: number } = {};
     while (true) {
-      let currentLeft = (await left.next()).value;
-      let currentRight = (await right.next()).value;
+      const currentLeft = (await left.next()).value;
+      const currentRight = (await right.next()).value;
       if (currentLeft == null || currentRight == null) break;
       if (seenTable[currentLeft.id]) {
         leftStack.push(currentLeft);
         rightStack = rightStack.slice(0, seenTable[currentLeft.id]);
+        break;
       } else if (seenTable[currentRight.id]) {
         rightStack.push(currentRight);
+        leftStack = leftStack.slice(0, seenTable[currentRight.id]);
+        break;
       } else {
         leftStack.push(currentLeft);
         rightStack.push(currentRight);
+        if (currentLeft.id === currentRight.id) break;
+        seenTable[currentLeft.id] = leftStack.length;
+        seenTable[currentRight.id] = rightStack.length;
       }
     }
+    return {
+      left: leftStack,
+      right: rightStack,
+    };
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
