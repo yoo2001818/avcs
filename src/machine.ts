@@ -41,6 +41,17 @@ export default class Machine<T, U> {
         return;
     }
   }
+  async forceRedo(action: Action<T, U>): Promise<void> {
+    switch (action.type) {
+      case 'action':
+        await this.config.run(action.payload);
+        return;
+      case 'undo':
+        return this.config.undo(action.payload, action.undoValue);
+      case 'merge':
+        return;
+    }
+  }
   async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
     let action: Action<T, U>;
     if (startId != null) {
@@ -96,7 +107,9 @@ export default class Machine<T, U> {
     for (let i = 0; i < left.length; i += 1) {
       await this.forceUndo(left[i]);
     }
-    // TODO redo
+    for (let i = right.length - 1; i >= 0; i -= 1) {
+      await this.forceRedo(right[i]);
+    }
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
