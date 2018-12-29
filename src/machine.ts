@@ -115,7 +115,7 @@ export default class Machine<T, U> {
     // Sync protocol is the following:
     // 0. If we know the common parent, we can rewind and put into stack until
     //    it is met.
-    // 1. Connect to the remote server, and fetchits latest actions (in bulk).
+    // 1. Connect to the remote server, and fetchs latest actions (in bulk).
     //    Then, put them into separate stack.
     // 2. Rewind from this side as well, but the count may vary.
     // 3. If we've seen remote's action from local side, it's finally met -
@@ -131,10 +131,23 @@ export default class Machine<T, U> {
     // The problem is, to fetch common parent, wehave to continously fetch from
     // the remote point.
     // To handle this, we make sync function to accept networking function set.
-    let localStack: Action<T, U>[] = [];
-    let remoteStack: Action<T, U>[] = [];
-    let seenTable: { [key: string]: boolean } = {};
-    let remoteLastId: string = null;
-    (await rpc.fetchMore(remoteLastId)).forEach(v => remoteStack.push(v));
+    let buffer: Action<T, U>[] = [];
+    let nextId: string = null;
+    const { left, right } = await this.getDivergingPath(
+      this.getHistory(),
+      {
+        next: async () => {
+          if (buffer.length === 0) {
+            const nextBuffer = await rpc.fetch(nextId);
+            if (nextBuffer.length === 0) {
+              return { done: true, value: null };
+            }
+            nextId = nextBuffer[nextBuffer.length - 1].id;
+            buffer = nextBuffer;
+          }
+          return { done: false, value: buffer.shift() };
+        },
+      },
+    );
   }
 }
