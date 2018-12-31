@@ -75,25 +75,31 @@ export default class Machine<T, U> {
   ): Promise<{ left: Action<T, U>[], right: Action<T, U>[] }> {
     let leftStack: Action<T, U>[] = [];
     let rightStack: Action<T, U>[] = [];
+    let leftEnded: boolean = false;
+    let rightEnded: boolean = false;
     const seenTable: { [key: string]: number } = {};
-    while (true) {
-      const currentLeft = (await left.next()).value;
-      const currentRight = (await right.next()).value;
-      if (currentLeft == null || currentRight == null) break;
-      if (seenTable[currentLeft.id]) {
+    while (!leftEnded || !rightEnded) {
+      const currentLeft = leftEnded ? null : (await left.next()).value;
+      const currentRight = rightEnded ? null : (await right.next()).value;
+      if (currentLeft == null) leftEnded = true;
+      if (currentRight == null) rightEnded = true;
+      if (!leftEnded && seenTable[currentLeft.id]) {
         leftStack.push(currentLeft);
         rightStack = rightStack.slice(0, seenTable[currentLeft.id]);
         break;
-      } else if (seenTable[currentRight.id]) {
+      } else if (!rightEnded && seenTable[currentRight.id]) {
         rightStack.push(currentRight);
         leftStack = leftStack.slice(0, seenTable[currentRight.id]);
         break;
-      } else {
+      } else if (!leftEnded && !rightEnded) {
         leftStack.push(currentLeft);
         rightStack.push(currentRight);
         if (currentLeft.id === currentRight.id) break;
         seenTable[currentLeft.id] = leftStack.length;
         seenTable[currentRight.id] = rightStack.length;
+      } else {
+        if (currentLeft != null) leftStack.push(currentLeft);
+        if (currentRight != null) rightStack.push(currentRight);
       }
     }
     return {
