@@ -2,6 +2,12 @@ import randomstring from 'randomstring';
 import { Action, MachineConfig, SyncRPCSet } from './type';
 import { separateBulk } from './util/iterator';
 
+type ActionDomain<T, U> = {
+  children: { [key: string]: ActionDomain<T, U> },
+  left: { touched: boolean, modifyType: number | null | false },
+  right: { touched: boolean, modifyType: number | null | false },
+};
+
 export default class Machine<T, U> {
   config: MachineConfig<T, U>;
   constructor(config: MachineConfig<T, U>) {
@@ -149,5 +155,10 @@ export default class Machine<T, U> {
         return output;
       }),
     );
+    // We have to check scopes and modify types.
+    // When the scope conflicts, check modify type - if modify type is
+    // different, or is null, it's a conflict.
+    // However, different modify type from same node is tolerable.
+    const domains: { [key: string]: ActionDomain<T, U> } = {};
   }
 }
