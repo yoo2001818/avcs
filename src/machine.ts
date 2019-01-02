@@ -160,5 +160,59 @@ export default class Machine<T, U> {
     // different, or is null, it's a conflict.
     // However, different modify type from same node is tolerable.
     const domains: { [key: string]: ActionDomain<T, U> } = {};
+    left.forEach((action) => {
+      const scopes = this.config.getActionScopes(action);
+      scopes.forEach((scope) => {
+        scope.keys.reduce(
+          (domain, key, i) => {
+            let child = domain[key];
+            if (child == null) {
+              child = domain[key] = {
+                children: {},
+                left: { touched: false, modifyType: undefined },
+                right: { touched: false, modifyType: undefined },
+              };
+            }
+            child.left.touched = true;
+            if (i === scope.keys.length - 1) {
+              if (child.left.modifyType === undefined) {
+                // Claim the modify type
+                child.left.modifyType = scope.modifyType;
+              } else if (child.left.modifyType !== scope.modifyType) {
+                child.left.modifyType = false;
+              }
+            }
+            return child.children;
+          },
+          domains);
+      });
+    });
+    right.forEach((action) => {
+      const scopes = this.config.getActionScopes(action);
+      scopes.forEach((scope) => {
+        scope.keys.reduce(
+          (domain, key, i) => {
+            let child = domain[key];
+            if (child == null) {
+              child = domain[key] = {
+                children: {},
+                left: { touched: false, modifyType: undefined },
+                right: { touched: false, modifyType: undefined },
+              };
+            }
+            child.right.touched = true;
+            if (i === scope.keys.length - 1) {
+              if (child.right.modifyType === undefined) {
+                // Claim the modify type
+                child.right.modifyType = scope.modifyType;
+              } else if (child.left.modifyType !== scope.modifyType) {
+                child.right.modifyType = false;
+              }
+            }
+            return child.children;
+          },
+          domains);
+      });
+    });
   }
 }
