@@ -1,6 +1,7 @@
 export type Action<T, U> = {
   id: string,
-  type: 'action' | 'undo' | 'merge' | 'shadow',
+  type: 'action' | 'undo' | 'merge',
+  shadow: boolean,
   parents: string[],
   payload: T,
   undoValue: U,

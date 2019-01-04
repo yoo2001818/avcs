@@ -25,11 +25,16 @@ export default class Machine<T, U> {
       undoValue,
       id: this.generateId(),
       type: 'action',
+      shadow: false,
       parents: [currentAction.id],
     };
     await this.config.storeAction(newAction);
     await this.config.setCurrentAction(newAction.id);
     return newAction.id;
+  }
+  async undo(action: Action<T, U>): Promise<void> {
+    // Undo and record it
+
   }
   async undoLast(): Promise<void> {
     const action = await this.config.getCurrentAction();
