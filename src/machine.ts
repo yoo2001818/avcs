@@ -8,6 +8,12 @@ type ActionDomain<T, U> = {
   right: { touched: boolean, modifyType: number | null | false },
 };
 
+const INVERTED_TYPES = {
+  action: 'undo' as 'undo',
+  undo: 'action' as 'action',
+  merge: 'merge' as 'merge',
+};
+
 export default class Machine<T, U> {
   config: MachineConfig<T, U>;
   constructor(config: MachineConfig<T, U>) {
@@ -32,9 +38,37 @@ export default class Machine<T, U> {
     await this.config.setCurrentAction(newAction.id);
     return newAction.id;
   }
-  async undo(action: Action<T, U>): Promise<void> {
+  async undo(action: Action<T, U>): Promise<string> {
     // Undo and record it
-
+    const currentAction = await this.config.getCurrentAction();
+    const undoValue = await this.forceUndo(action);
+    const newAction: Action<T, U> = {
+      undoValue,
+      payload: action.payload,
+      id: this.generateId(),
+      type: INVERTED_TYPES[action.type],
+      shadow: false,
+      parents: [currentAction.id],
+    };
+    await this.config.storeAction(newAction);
+    await this.config.setCurrentAction(newAction.id);
+    return newAction.id;
+  }
+  async redo(action: Action<T, U>): Promise<string> {
+    // Redo and record it
+    const currentAction = await this.config.getCurrentAction();
+    const undoValue = await this.forceRedo(action);
+    const newAction: Action<T, U> = {
+      undoValue,
+      payload: action.payload,
+      id: this.generateId(),
+      type: INVERTED_TYPES[action.type],
+      shadow: false,
+      parents: [currentAction.id],
+    };
+    await this.config.storeAction(newAction);
+    await this.config.setCurrentAction(newAction.id);
+    return newAction.id;
   }
   async undoLast(): Promise<void> {
     const action = await this.config.getCurrentAction();
@@ -42,25 +76,27 @@ export default class Machine<T, U> {
     await this.forceUndo(action);
     await this.config.setCurrentAction(action.parents[0]);
   }
-  async forceUndo(action: Action<T, U>): Promise<void> {
+  async forceUndo(action: Action<T, U>): Promise<U | null> {
     switch (action.type) {
       case 'action':
-        return this.config.undo(action.payload, action.undoValue);
+        await this.config.undo(action.payload, action.undoValue);
+        return null;
       case 'undo':
-        await this.config.run(action.payload);
-        return;
+        return this.config.run(action.payload);
       case 'merge':
+        // Do nothing; we can't do anything about this.
         return;
     }
   }
-  async forceRedo(action: Action<T, U>): Promise<void> {
+  async forceRedo(action: Action<T, U>): Promise<U | null> {
     switch (action.type) {
       case 'action':
-        await this.config.run(action.payload);
-        return;
+        return this.config.run(action.payload);
       case 'undo':
-        return this.config.undo(action.payload, action.undoValue);
+        await this.config.undo(action.payload, action.undoValue);
+        return null;
       case 'merge':
+        // Do nothing; we can't do anything about this.
         return;
     }
   }

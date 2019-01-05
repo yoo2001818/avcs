@@ -4,7 +4,7 @@ export type Action<T, U> = {
   shadow: boolean,
   parents: string[],
   payload: T,
-  undoValue: U,
+  undoValue: U | null,
 };
 export type ActionScope = {
   keys: (string | number)[],
