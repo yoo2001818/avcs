@@ -1,21 +1,10 @@
+import Machine from './machine';
+import MemoryStorage from './storage/memory';
+
 type Action = {
-  type: 'set' | 'increment' | 'decrement' | 'remove',
+  type: 'set' | 'increment' | 'decrement',
   key: string[],
-  value: any,
+  value?: any,
 };
 
-export function getActionScopes(action: Action): ([string[], string])[] {
-  if (['increment', 'decrement'].includes(action.type)) {
-    return [[action.key, 'add']];
-  }
-  return [[action.key, null]];
-}
-
-export async function merge(
-  offendingScope: string[][], local: Action[], remote: Action[],
-) {
-  return {
-    local: remote as Action[],
-    remote: local as Action[],
-  };
-}
+const machine = new Machine(null, new MemoryStorage());

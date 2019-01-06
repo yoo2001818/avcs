@@ -21,11 +21,6 @@ export type MachineConfig<T, U> = {
   //
   run: (payload: T) => Promise<U>,
   undo: (payload: T, undoValue: U) => Promise<void>,
-  //
-  storeAction: (action: Action<T, U>) => Promise<void>,
-  getCurrentAction: () => Promise<Action<T, U>>,
-  getAction: (id: string) => Promise<Action<T, U>>,
-  setCurrentAction: (id: string) => Promise<void>,
 };
 
 export type SyncRPCSet<T, U> = {

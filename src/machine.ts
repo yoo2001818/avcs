@@ -1,5 +1,6 @@
 import randomstring from 'randomstring';
 import { Action, MachineConfig, SyncRPCSet } from './type';
+import { Storage } from './storage';
 import { separateBulk } from './util/iterator';
 
 type ActionDomain<T, U> = {
@@ -16,15 +17,17 @@ const INVERTED_TYPES = {
 
 export default class Machine<T, U> {
   config: MachineConfig<T, U>;
-  constructor(config: MachineConfig<T, U>) {
+  storage: Storage<T, U>;
+  constructor(config: MachineConfig<T, U>, storage: Storage<T, U>) {
     this.config = config;
+    this.storage = storage;
   }
   generateId(): string {
     return randomstring.generate();
   }
   async run(payload: T): Promise<string> {
     // Run and record the action into the system.
-    const currentAction = await this.config.getCurrentAction();
+    const currentAction = await this.storage.getCurrent();
     const undoValue = await this.config.run(payload);
     const newAction: Action<T, U> = {
       payload,
@@ -34,13 +37,13 @@ export default class Machine<T, U> {
       shadow: false,
       parents: [currentAction.id],
     };
-    await this.config.storeAction(newAction);
-    await this.config.setCurrentAction(newAction.id);
+    await this.storage.set(newAction.id, newAction);
+    await this.storage.setCurrent(newAction.id);
     return newAction.id;
   }
   async undo(action: Action<T, U>): Promise<string> {
     // Undo and record it
-    const currentAction = await this.config.getCurrentAction();
+    const currentAction = await this.storage.getCurrent();
     const undoValue = await this.forceUndo(action);
     const newAction: Action<T, U> = {
       undoValue,
@@ -50,13 +53,13 @@ export default class Machine<T, U> {
       shadow: false,
       parents: [currentAction.id],
     };
-    await this.config.storeAction(newAction);
-    await this.config.setCurrentAction(newAction.id);
+    await this.storage.set(newAction.id, newAction);
+    await this.storage.setCurrent(newAction.id);
     return newAction.id;
   }
   async redo(action: Action<T, U>): Promise<string> {
     // Redo and record it
-    const currentAction = await this.config.getCurrentAction();
+    const currentAction = await this.storage.getCurrent();
     const undoValue = await this.forceRedo(action);
     const newAction: Action<T, U> = {
       undoValue,
@@ -66,15 +69,15 @@ export default class Machine<T, U> {
       shadow: false,
       parents: [currentAction.id],
     };
-    await this.config.storeAction(newAction);
-    await this.config.setCurrentAction(newAction.id);
+    await this.storage.set(newAction.id, newAction);
+    await this.storage.setCurrent(newAction.id);
     return newAction.id;
   }
   async undoLast(): Promise<void> {
-    const action = await this.config.getCurrentAction();
+    const action = await this.storage.getCurrent();
     // TODO Transactions
     await this.forceUndo(action);
-    await this.config.setCurrentAction(action.parents[0]);
+    await this.storage.setCurrent(action.parents[0]);
   }
   async forceUndo(action: Action<T, U>): Promise<U | null> {
     switch (action.type) {
@@ -103,9 +106,9 @@ export default class Machine<T, U> {
   async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
     let action: Action<T, U>;
     if (startId != null) {
-      action = await this.config.getAction(startId);
+      action = await this.storage.get(startId);
     } else {
-      action = await this.config.getCurrentAction();
+      action = await this.storage.getCurrent();
     }
     while (action != null) {
       yield action;
@@ -113,7 +116,7 @@ export default class Machine<T, U> {
       if (parentId == null) {
         break;
       } else {
-        action = await this.config.getAction(parentId);
+        action = await this.storage.get(parentId);
       }
     }
   }
