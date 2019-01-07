@@ -44,6 +44,8 @@ export default class Machine<T, U> {
   async undo(action: Action<T, U>): Promise<string> {
     // Undo and record it
     const currentAction = await this.storage.getCurrent();
+    // TODO If the action domain has been tampered with before, we must run
+    // merge conflict handler here.
     const undoValue = await this.forceUndo(action);
     const newAction: Action<T, U> = {
       undoValue,
