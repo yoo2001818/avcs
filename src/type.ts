@@ -1,26 +1,36 @@
-export type Action<T, U> = {
+export type BaseAction = {
   id: string,
-  type: 'action' | 'undo' | 'merge',
   shadow: boolean,
-  parents: string[],
-  payload: T,
-  undoValue: U | null,
 };
+
+export type NormalAction<T, U> = BaseAction & {
+  type: 'normal',
+  data: T,
+  undoData: U,
+  parent: string,
+};
+
+export type MergeAction<T> = BaseAction & {
+  type: 'merge',
+  parents: { id: string, data: T[] }[],
+};
+
+export type Action<T, U> = NormalAction<T, U> | MergeAction<T>;
+
 export type ActionScope = {
   keys: (string | number)[],
   modifyType: number | null,
 };
 
 export type MachineConfig<T, U> = {
-  getActionScopes: (action: Action<T, U>) => ActionScope[],
+  getScopes: (action: Action<T, U>) => ActionScope[],
+  getReverse: (data: T, undoData: U) => T,
   merge: (
     offending: ActionScope,
     local: Action<T, U>[],
     remote: Action<T, U>[],
   ) => Promise<{ local: Action<T, U>[], remote: Action<T, U>[] }>,
-  //
   run: (payload: T) => Promise<U>,
-  undo: (payload: T, undoValue: U) => Promise<void>,
 };
 
 export type SyncRPCSet<T, U> = {
