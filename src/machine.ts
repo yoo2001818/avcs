@@ -25,84 +25,32 @@ export default class Machine<T, U> {
   generateId(): string {
     return randomstring.generate();
   }
-  async run(payload: T): Promise<string> {
+  async run(data: T, undoId?: string): Promise<string> {
     // Run and record the action into the system.
     const currentAction = await this.storage.getCurrent();
-    const undoValue = await this.config.run(payload);
+    const undoData = await this.forceRun(data);
     const newAction: Action<T, U> = {
-      payload,
-      undoValue,
+      data,
+      undoData,
+      undoId,
       id: this.generateId(),
-      type: 'action',
-      shadow: false,
-      parents: [currentAction.id],
+      type: 'normal',
+      parent: currentAction.id,
     };
     await this.storage.set(newAction.id, newAction);
     await this.storage.setCurrent(newAction.id);
     return newAction.id;
   }
-  async undo(action: Action<T, U>): Promise<string> {
-    // Undo and record it
-    const currentAction = await this.storage.getCurrent();
-    // TODO If the action domain has been tampered with before, we must run
-    // merge conflict handler here.
-    const undoValue = await this.forceUndo(action);
-    const newAction: Action<T, U> = {
-      undoValue,
-      payload: action.payload,
-      id: this.generateId(),
-      type: INVERTED_TYPES[action.type],
-      shadow: false,
-      parents: [currentAction.id],
-    };
-    await this.storage.set(newAction.id, newAction);
-    await this.storage.setCurrent(newAction.id);
-    return newAction.id;
+  async forceRun(data: T): Promise<U> {
+    return this.config.run(data);
   }
-  async redo(action: Action<T, U>): Promise<string> {
-    // Redo and record it
-    const currentAction = await this.storage.getCurrent();
-    const undoValue = await this.forceRedo(action);
-    const newAction: Action<T, U> = {
-      undoValue,
-      payload: action.payload,
-      id: this.generateId(),
-      type: INVERTED_TYPES[action.type],
-      shadow: false,
-      parents: [currentAction.id],
-    };
-    await this.storage.set(newAction.id, newAction);
-    await this.storage.setCurrent(newAction.id);
-    return newAction.id;
-  }
-  async undoLast(): Promise<void> {
-    const action = await this.storage.getCurrent();
-    // TODO Transactions
-    await this.forceUndo(action);
-    await this.storage.setCurrent(action.parents[0]);
-  }
-  async forceUndo(action: Action<T, U>): Promise<U | null> {
+  async undo(action: Action<T, U>): Promise<void> {
     switch (action.type) {
-      case 'action':
-        await this.config.undo(action.payload, action.undoValue);
-        return null;
-      case 'undo':
-        return this.config.run(action.payload);
+      case 'normal':
+        this.run(
+          this.config.getReverse(action.data, action.undoData), action.id);
+        break;
       case 'merge':
-        // Do nothing; we can't do anything about this.
-        return;
-    }
-  }
-  async forceRedo(action: Action<T, U>): Promise<U | null> {
-    switch (action.type) {
-      case 'action':
-        return this.config.run(action.payload);
-      case 'undo':
-        await this.config.undo(action.payload, action.undoValue);
-        return null;
-      case 'merge':
-        // Do nothing; we can't do anything about this.
-        return;
     }
   }
   async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
@@ -114,7 +62,14 @@ export default class Machine<T, U> {
     }
     while (action != null) {
       yield action;
-      const parentId = action.parents[0];
+      let parentId;
+      switch (action.type) {
+        case 'normal':
+          parentId = action.parent;
+          break;
+        case 'merge':
+          parentId = action.parents[0].id;
+      }
       if (parentId == null) {
         break;
       } else {
@@ -207,7 +162,7 @@ export default class Machine<T, U> {
     // However, different modify type from same node is tolerable.
     const domains: { [key: string]: ActionDomain<T, U> } = {};
     left.forEach((action) => {
-      const scopes = this.config.getActionScopes(action);
+      const scopes = this.config.getScopes(action);
       scopes.forEach((scope) => {
         scope.keys.reduce(
           (domain, key, i) => {
@@ -234,7 +189,7 @@ export default class Machine<T, U> {
       });
     });
     right.forEach((action) => {
-      const scopes = this.config.getActionScopes(action);
+      const scopes = this.config.getScopes(action);
       scopes.forEach((scope) => {
         scope.keys.reduce(
           (domain, key, i) => {

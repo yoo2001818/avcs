@@ -1,6 +1,5 @@
 export type BaseAction = {
   id: string,
-  shadow: boolean,
 };
 
 export type NormalAction<T, U> = BaseAction & {
@@ -8,14 +7,15 @@ export type NormalAction<T, U> = BaseAction & {
   data: T,
   undoData: U,
   parent: string,
+  undoId?: string,
 };
 
-export type MergeAction<T> = BaseAction & {
+export type MergeAction<T, U> = BaseAction & {
   type: 'merge',
-  parents: { id: string, data: T[] }[],
+  parents: { id: string, data: T[], undoData: U[] }[],
 };
 
-export type Action<T, U> = NormalAction<T, U> | MergeAction<T>;
+export type Action<T, U> = NormalAction<T, U> | MergeAction<T, U>;
 
 export type ActionScope = {
   keys: (string | number)[],
