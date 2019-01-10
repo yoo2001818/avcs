@@ -25,6 +25,16 @@ export default class Machine<T, U> {
   generateId(): string {
     return randomstring.generate();
   }
+  async forceRun(data: T): Promise<U> {
+    return this.config.run(data);
+  }
+  async forceRunSeries(data: T[]): Promise<U[]> {
+    const output: U[] = [];
+    for (const entry of data) {
+      output.push(await this.config.run(entry));
+    }
+    return output;
+  }
   async run(data: T, undoId?: string): Promise<string> {
     // Run and record the action into the system.
     const currentAction = await this.storage.getCurrent();
@@ -41,10 +51,9 @@ export default class Machine<T, U> {
     await this.storage.setCurrent(newAction.id);
     return newAction.id;
   }
-  async forceRun(data: T): Promise<U> {
-    return this.config.run(data);
-  }
   async undo(action: Action<T, U>): Promise<void> {
+    // TODO Determine if the action has a conflict - the scope between the
+    // reversed action, and history until the action, should be compared.
     switch (action.type) {
       case 'normal':
         this.run(
@@ -68,6 +77,8 @@ export default class Machine<T, U> {
           parentId = action.parent;
           break;
         case 'merge':
+          // TODO Which branch should be followed? We can possibly retrieve
+          // results from 'yield'.
           parentId = action.parents[0].id;
       }
       if (parentId == null) {
