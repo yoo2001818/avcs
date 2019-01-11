@@ -251,7 +251,15 @@ on the top of it, which should make the action logs even.
 
 Remote action log's side is also written to merge with local action logs.
 
-After finishing merge, all the histories are sent back to the server.
+However, since we need to manage undo data, we actually have to run merging
+at the remote side to retrieve undo data.
+
+This is important as it must allow any action, including merging to be rewinded.
+
+### Sharing results
+The merging action has been run from each side, and they both have their own
+merge data. They share their each undo data, and compose the merge action
+from that.
 
 ### Limitations
 As the new entries cannot be written while merging, this algorithm should be
