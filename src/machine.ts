@@ -29,6 +29,7 @@ export default class Machine<T, U> {
     return this.config.run(data);
   }
   async forceRunSeries(data: T[]): Promise<U[]> {
+    // TODO Transactions
     const output: U[] = [];
     for (const entry of data) {
       output.push(await this.config.run(entry));
@@ -51,15 +52,47 @@ export default class Machine<T, U> {
     await this.storage.setCurrent(newAction.id);
     return newAction.id;
   }
-  async undo(action: Action<T, U>): Promise<void> {
+  async undo(action: Action<T, U>, parentId?: string): Promise<void> {
     // TODO Determine if the action has a conflict - the scope between the
     // reversed action, and history until the action, should be compared.
     switch (action.type) {
       case 'normal':
-        this.run(
+        await this.run(
           this.config.getReverse(action.data, action.undoData), action.id);
         break;
       case 'merge':
+        // TODO Which parent should be followed? In this case, the undo must
+        // receive WHICH branch to undo.
+    }
+  }
+  async forceUndo(action: Action<T, U>, parentId?: string): Promise<void> {
+    switch (action.type) {
+      case 'normal':
+        await this.forceRun(
+          this.config.getReverse(action.data, action.undoData));
+        break;
+      case 'merge':
+        const parent = action.parents.find(v => v.id === parentId);
+        if (parent == null) {
+          throw new Error(`Unknown parent ID ${parentId}`);
+        }
+        await this.forceRunSeries(parent.data.map((item, i) =>
+          this.config.getReverse(item, parent.undoData[i])));
+    }
+  }
+  async forceRedo(action: Action<T, U>, parentId?: string): Promise<void> {
+    // NOTE this reruns the given action, meaning that it doesn't reverse the
+    // action. Therefore undoed action can't be passed into here.
+    switch (action.type) {
+      case 'normal':
+        await this.forceRun(action.data);
+        break;
+      case 'merge':
+        const parent = action.parents.find(v => v.id === parentId);
+        if (parent == null) {
+          throw new Error(`Unknown parent ID ${parentId}`);
+        }
+        await this.forceRunSeries(parent.data);
     }
   }
   async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
@@ -130,10 +163,10 @@ export default class Machine<T, U> {
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), this.getHistory(targetId));
     for (let i = 0; i < left.length; i += 1) {
-      await this.forceUndo(left[i]);
+      await this.forceUndo(left[i], left[i + 1].id);
     }
     for (let i = right.length - 1; i >= 0; i -= 1) {
-      await this.forceRedo(right[i]);
+      await this.forceRedo(right[i], right[i + 1].id);
     }
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
