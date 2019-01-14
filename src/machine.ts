@@ -9,12 +9,6 @@ type ActionDomain<T, U> = {
   right: { touched: boolean, modifyType: number | null | false },
 };
 
-const INVERTED_TYPES = {
-  action: 'undo' as 'undo',
-  undo: 'action' as 'action',
-  merge: 'merge' as 'merge',
-};
-
 export default class Machine<T, U> {
   config: MachineConfig<T, U>;
   storage: Storage<T, U>;
