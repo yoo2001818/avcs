@@ -41,6 +41,7 @@ export default function getDomains<T, U>(
     scopes.forEach((scope) => {
       root.actions.push(action);
       if (scope.keys.length === 0) claimDomain(root, scope);
+      else root.modifyType = false;
       scope.keys.reduce(
         (node, key, i) => {
           let child = node.children[key];
@@ -49,6 +50,7 @@ export default function getDomains<T, U>(
           }
           child.actions.push(action);
           if (i === scope.keys.length - 1) claimDomain(child, scope);
+          else child.modifyType = false;
           return child;
         },
         root);

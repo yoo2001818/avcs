@@ -24,12 +24,12 @@ describe('getDomains', () => {
     const action2 = newAction([{ keys: ['users', 'name'], modifyType: null }]);
     expect(getDomains([action, action2], getScopes)).toEqual({
       actions: [action, action2],
-      modifyType: null,
+      modifyType: false,
       triggered: false,
       children: {
         users: {
           actions: [action, action2],
-          modifyType: null,
+          modifyType: false,
           triggered: false,
           children: {
             count: {
@@ -45,6 +45,42 @@ describe('getDomains', () => {
               children: {},
             },
           },
+        },
+      },
+    });
+  });
+  it('should keep modify type if possible', () => {
+    const action = newAction([{ keys: [], modifyType: 1 }]);
+    expect(getDomains([action, action], getScopes)).toEqual({
+      actions: [action, action],
+      modifyType: 1,
+      triggered: true,
+      children: {},
+    });
+  });
+  it('should invalidate modify type', () => {
+    const action = newAction([{ keys: [], modifyType: 1 }]);
+    const action2 = newAction([{ keys: [], modifyType: 2 }]);
+    expect(getDomains([action, action2], getScopes)).toEqual({
+      actions: [action, action2],
+      modifyType: false,
+      triggered: true,
+      children: {},
+    });
+  });
+  it('should invalidate modify type if child exists', () => {
+    const action = newAction([{ keys: [], modifyType: 1 }]);
+    const action2 = newAction([{ keys: ['a'], modifyType: 1 }]);
+    expect(getDomains([action, action2], getScopes)).toEqual({
+      actions: [action, action2],
+      modifyType: false,
+      triggered: true,
+      children: {
+        a: {
+          actions: [action2],
+          modifyType: 1,
+          triggered: true,
+          children: {},
         },
       },
     });
