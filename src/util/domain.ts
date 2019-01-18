@@ -29,6 +29,8 @@ function claimDomain<T, U>(domain: ActionDomain<T, U>, scope: ActionScope) {
   }
 }
 
+type Visited = { [key: string]: Visited };
+
 export default function getDomains<T, U>(
   actions: Iterable<Action<T, U>>,
   getScopes: (action: Action<T, U>) => ActionScope[],
@@ -36,10 +38,15 @@ export default function getDomains<T, U>(
   const root: ActionDomain<T, U> = createDomain();
   for (const action of actions) {
     const scopes = getScopes(action);
+    let visited: Visited = null;
     // The scopes MUST be exclusive - i.e.
     // a.b.c, a.b can't coexist. But a.b.c, a.b.d can coexist.
     scopes.forEach((scope) => {
-      root.actions.push(action);
+      let currentVisited = visited;
+      if (currentVisited == null) {
+        currentVisited = visited = {};
+        root.actions.push(action);
+      }
       if (scope.keys.length === 0) claimDomain(root, scope);
       else root.modifyType = false;
       scope.keys.reduce(
@@ -48,7 +55,11 @@ export default function getDomains<T, U>(
           if (child == null) {
             child = node.children[key] = createDomain();
           }
-          child.actions.push(action);
+          let visitedChild = currentVisited[key];
+          if (visitedChild == null) {
+            visitedChild = currentVisited[key] = {};
+            child.actions.push(action);
+          }
           if (i === scope.keys.length - 1) claimDomain(child, scope);
           else child.modifyType = false;
           return child;
