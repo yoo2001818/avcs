@@ -23,14 +23,14 @@ function mergeLevel<T, U>(
   left: ActionDomain<T, U>,
   right: ActionDomain<T, U>,
   config: MachineConfig<T, U>,
-): Action<T, U>[] {
+): { left: Action<T, U>[], right: Action<T, U>[] } {
   // Check if both left / right has children node. If one of them
   // doesn't have one, we can just go ahead and use the other.
   if (left == null || left.actions.length === 0) {
-    return right.actions;
+    return { left: right.actions, right: right.actions };
   }
   if (right == null || right.actions.length === 0) {
-    return left.actions;
+    return { left: left.actions, right: left.actions };
   }
   // Otherwise, traverse down.
   // In order for conflict to occur, all of these must be true:
@@ -39,5 +39,9 @@ function mergeLevel<T, U>(
   // 3. modifyType is both false, or does not equal to each other.
   // If this happens, we can just pass these all actions to merge conflict
   // handler, and use its results to merge them.
-  return [];
+  //
+  // However, an action can reside in multiple scopes. If that happens, and
+  // merge conflict occurs, we must treat them as same - both 'a' and 'b' domain
+  // must be treated as whole.
+  return { left: [], right: [] };
 }
