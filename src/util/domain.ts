@@ -36,6 +36,21 @@ export default function getDomains<T, U>(
   getScopes: (action: Action<T, U>) => ActionScope[],
 ): ActionDomain<T, U> {
   const root: ActionDomain<T, U> = createDomain();
+  // Action with multiple scopes actually performs a merger - both domains
+  // becomes the same.
+  //
+  // In order to do that, we first populate the domains with 'portal', or,
+  // 'tombstone', indicating that the resource has gone to there, not here.
+  //
+  // However, this even adds more difficulty -
+  // root - a - a
+  //      \ b - b
+  // If an action specifies a.a and b.b as its domain, since an action occur
+  // only once in the tree, a and b as whole must be merged as well. (That is,
+  // if conflict occurs inside there.)
+  //
+  for (const action of actions) {
+  }
   for (const action of actions) {
     const scopes = getScopes(action);
     let visited: Visited = null;
