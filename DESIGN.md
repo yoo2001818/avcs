@@ -168,6 +168,17 @@ This can be a problem if a user issues an action that applies to the entire
 data storage. But since it's impossible to resolve inside here, the application
 code is reponsible for such cases.
 
+### Conflict with multiple domains
+Merging is pretty simple when it only happens inside single domain, but, some
+actions reside in multiple domains, such as:
+
+- a.x, and a.y exists, but it applies in 'a'
+- it both affects 'a' and 'b'
+
+First case is properly handled, by merging against entire 'a' domain, but,
+second case is really complicated, as it can serverely break the action order
+of same domain, thus breaking the order for same client node.
+
 ## Action ID
 The application, or avcs, must provide a way to dispense unique IDs, and attach
 those IDs into every action.
