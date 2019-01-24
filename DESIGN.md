@@ -179,6 +179,18 @@ First case is properly handled, by merging against entire 'a' domain, but,
 second case is really complicated, as it can serverely break the action order
 of same domain, thus breaking the order for same client node.
 
+In order to resolve this, we can merge 'a' and 'b', and treat them as the same
+node, or, evict the offending nodes from the history (it's not possible.)
+
+Since that scenario won't happen a lot, it'd be just treat them as the same
+node. However, when parent nodes are present, this complicates the problem a
+lot.
+
+`a.a` and `b.a` is both modified from left, and `b` is modified from the right.
+Since two nodes are merged, `a` and `b` both would appear in the merge conflict
+resolver. This is unevitable - avcs cannot guarentee that these actions happen
+in order, and happen only once, if otherwise.
+
 ## Action ID
 The application, or avcs, must provide a way to dispense unique IDs, and attach
 those IDs into every action.
