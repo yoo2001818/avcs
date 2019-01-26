@@ -4,7 +4,7 @@ export type ActionDomain<T, U> = {
   children: { [key: string]: ActionDomain<T, U> },
   modifyType: number | null | false,
   triggered: boolean,
-  actions: { order: number, action: Action<T, U> }[],
+  actions: Action<T, U>[],
 };
 
 function createDomain<T, U>(): ActionDomain<T, U> {
@@ -50,9 +50,6 @@ export default function getDomains<T, U>(
   // if conflict occurs inside there.)
   //
   for (const action of actions) {
-  }
-  let actionOrder: number = 0;
-  for (const action of actions) {
     const scopes = getScopes(action);
     let visited: Visited = null;
     // The scopes MUST be exclusive - i.e.
@@ -61,7 +58,7 @@ export default function getDomains<T, U>(
       let currentVisited = visited;
       if (currentVisited == null) {
         currentVisited = visited = {};
-        root.actions.push({ action, order: actionOrder });
+        root.actions.push(action);
       }
       if (scope.keys.length === 0) claimDomain(root, scope);
       else root.modifyType = false;
@@ -74,14 +71,13 @@ export default function getDomains<T, U>(
           let visitedChild = currentVisited[key];
           if (visitedChild == null) {
             visitedChild = currentVisited[key] = {};
-            child.actions.push({ action, order: actionOrder });
+            child.actions.push(action);
           }
           if (i === scope.keys.length - 1) claimDomain(child, scope);
           else child.modifyType = false;
           return child;
         },
         root);
-      actionOrder += 1;
     });
   }
   return root;
