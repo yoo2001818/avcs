@@ -1,7 +1,7 @@
 import { Action, MachineConfig } from './type';
 import getDomain, { ActionDomain } from './util/domain';
 
-export default function merge<T, U>(
+export default async function merge<T, U>(
   left: Action<T, U>[],
   right: Action<T, U>[],
   config: MachineConfig<T, U>,
@@ -16,17 +16,18 @@ export default function merge<T, U>(
   // MUST be treated as whole, otherwise it'll be executed multiple times.
 
   // Recursively traverse down the tree.
-  mergeLevel(leftDomain, rightDomain, config);
+  await mergeLevel(leftDomain, rightDomain, config, []);
 }
 
-function mergeLevel<T, U>(
+async function mergeLevel<T, U>(
   left: ActionDomain<T, U>,
   right: ActionDomain<T, U>,
   config: MachineConfig<T, U>,
+  path: (string | number)[],
   output: { left: Action<T, U>[], right: Action<T, U>[] } = {
     left: [], right: [],
   },
-): { left: Action<T, U>[], right: Action<T, U>[] } {
+): Promise<{ left: Action<T, U>[], right: Action<T, U>[] }> {
   // Check if both left / right has children node. If one of them
   // doesn't have one, we can just go ahead and use the other.
   if (left == null || left.actions.length === 0) {
@@ -51,17 +52,30 @@ function mergeLevel<T, U>(
   if (left.triggered || right.triggered) {
     // Check if the node is compatiable, so it can be merged together without
     // any problem.
-    if (left.modifyType !== right.modifyType) {
+    if (left.modifyType === false || left.modifyType !== right.modifyType) {
       // It's not. Launch conflict resolution.
+      const result = await config.merge(path, left.actions, right.actions);
+      result.left.forEach(v => output.left.push(v));
+      result.right.forEach(v => output.right.push(v));
+    } else {
+      // Otherwise, merge them in any order.
+      left.actions.forEach(v => output.left.push(v));
+      left.actions.forEach(v => output.right.push(v));
+      right.actions.forEach(v => output.left.push(v));
+      right.actions.forEach(v => output.right.push(v));
     }
   } else {
     // Merge its children without any order (it shouldn't matter.)
     for (const key in left.children) {
-      mergeLevel(left.children[key], right.children[key], config, output);
+      mergeLevel(
+        left.children[key], right.children[key],
+        config, [...path, key], output);
     }
     for (const key in right.children) {
       if (left.children[key] != null) continue;
-      mergeLevel(left.children[key], right.children[key], config, output);
+      mergeLevel(
+        left.children[key], right.children[key],
+        config, [...path, key], output);
     }
   }
   return output;

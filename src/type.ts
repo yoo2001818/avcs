@@ -26,10 +26,10 @@ export type MachineConfig<T, U> = {
   getScopes: (action: Action<T, U>) => ActionScope[],
   getReverse: (data: T, undoData: U) => T,
   merge: (
-    offending: ActionScope,
-    local: Action<T, U>[],
-    remote: Action<T, U>[],
-  ) => Promise<{ local: Action<T, U>[], remote: Action<T, U>[] }>,
+    offending: (string | number)[],
+    left: Action<T, U>[],
+    right: Action<T, U>[],
+  ) => Promise<{ left: Action<T, U>[], right: Action<T, U>[] }>,
   run: (payload: T) => Promise<U>,
 };
 
