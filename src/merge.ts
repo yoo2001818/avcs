@@ -16,7 +16,7 @@ export default async function merge<T, U>(
   // MUST be treated as whole, otherwise it'll be executed multiple times.
 
   // Recursively traverse down the tree.
-  await mergeLevel(leftDomain, rightDomain, config, []);
+  return mergeLevel(leftDomain, rightDomain, config, []);
 }
 
 async function mergeLevel<T, U>(
@@ -32,10 +32,8 @@ async function mergeLevel<T, U>(
   // doesn't have one, we can just go ahead and use the other.
   if (left == null || left.actions.length === 0) {
     right.actions.forEach(v => output.left.push(v));
-    right.actions.forEach(v => output.right.push(v));
   }
   if (right == null || right.actions.length === 0) {
-    left.actions.forEach(v => output.left.push(v));
     left.actions.forEach(v => output.right.push(v));
   }
   // Otherwise, traverse down.
@@ -59,10 +57,8 @@ async function mergeLevel<T, U>(
       result.right.forEach(v => output.right.push(v));
     } else {
       // Otherwise, merge them in any order.
-      left.actions.forEach(v => output.left.push(v));
       left.actions.forEach(v => output.right.push(v));
       right.actions.forEach(v => output.left.push(v));
-      right.actions.forEach(v => output.right.push(v));
     }
   } else {
     // Merge its children without any order (it shouldn't matter.)
