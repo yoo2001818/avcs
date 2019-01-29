@@ -24,7 +24,9 @@ function getScopes(action: Action<ActionData, UndoData>): ActionScope[] {
 const machineConfig: MachineConfig<ActionData, UndoData> = {
   getScopes,
   getReverse: () => null,
-  merge: () => null,
+  merge: async (offending, left, right) => {
+    return { left, right: left };
+  },
   run: () => null,
 };
 
@@ -40,19 +42,39 @@ function newAction(
   };
 }
 describe('merge', () => {
-  it('should return results', async () => {
+  it('should return results if not conflicted', async () => {
     expect(await merge([
       newAction([['a', 'x']], '+', 3),
       newAction([['a', 'y']], '=', 2),
     ], [
       newAction([['a', 'x']], '-', 2),
+      newAction([['a', 'z']], '=', 2),
     ], machineConfig)).toEqual({
       left: [
         newAction([['a', 'x']], '-', 2),
+        newAction([['a', 'z']], '=', 2),
       ],
       right: [
         newAction([['a', 'x']], '+', 3),
         newAction([['a', 'y']], '=', 2),
+      ],
+    });
+  });
+  it('should run merge handler if conflicted', async () => {
+    expect(await merge([
+      newAction([['a', 'x']], '+', 3),
+      newAction([['a', 'z']], '=', 2),
+    ], [
+      newAction([['a', 'x']], '-', 2),
+      newAction([['a', 'z']], '=', 3),
+    ], machineConfig)).toEqual({
+      left: [
+        newAction([['a', 'x']], '-', 2),
+        newAction([['a', 'z']], '=', 2),
+      ],
+      right: [
+        newAction([['a', 'x']], '+', 3),
+        newAction([['a', 'z']], '=', 2),
       ],
     });
   });
