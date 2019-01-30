@@ -61,21 +61,32 @@ describe('merge', () => {
     });
   });
   it('should run merge handler if conflicted', async () => {
+    const mergeHandler = jest.fn();
+    mergeHandler.mockReturnValue(Promise.resolve({
+      left: [
+        newAction([['a', 'z']], '=', 3),
+      ],
+      right: [],
+    }));
     expect(await merge([
       newAction([['a', 'x']], '+', 3),
       newAction([['a', 'z']], '=', 2),
     ], [
       newAction([['a', 'x']], '-', 2),
       newAction([['a', 'z']], '=', 3),
-    ], machineConfig)).toEqual({
+    ], { ...machineConfig, merge: mergeHandler })).toEqual({
       left: [
         newAction([['a', 'x']], '-', 2),
-        newAction([['a', 'z']], '=', 2),
+        newAction([['a', 'z']], '=', 3),
       ],
       right: [
         newAction([['a', 'x']], '+', 3),
-        newAction([['a', 'z']], '=', 2),
       ],
     });
+    expect(mergeHandler).toHaveBeenCalledWith(['a', 'z'], [
+      newAction([['a', 'z']], '=', 2),
+    ], [
+      newAction([['a', 'z']], '=', 3),
+    ]);
   });
 });
