@@ -32,9 +32,11 @@ async function mergeLevel<T, U>(
   // doesn't have one, we can just go ahead and use the other.
   if (left == null || left.actions.length === 0) {
     right.actions.forEach(v => output.left.push(v));
+    return;
   }
   if (right == null || right.actions.length === 0) {
     left.actions.forEach(v => output.right.push(v));
+    return;
   }
   // Otherwise, traverse down.
   // In order for conflict to occur, all of these must be true:
@@ -63,13 +65,13 @@ async function mergeLevel<T, U>(
   } else {
     // Merge its children without any order (it shouldn't matter.)
     for (const key in left.children) {
-      mergeLevel(
+      await mergeLevel(
         left.children[key], right.children[key],
         config, [...path, key], output);
     }
     for (const key in right.children) {
       if (left.children[key] != null) continue;
-      mergeLevel(
+      await mergeLevel(
         left.children[key], right.children[key],
         config, [...path, key], output);
     }
