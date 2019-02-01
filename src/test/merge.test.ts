@@ -89,4 +89,35 @@ describe('merge', () => {
       newAction([['a', 'z']], '=', 3),
     ]);
   });
+  it('should ascend into parent scope', async () => {
+    const mergeHandler = jest.fn();
+    mergeHandler.mockReturnValue(Promise.resolve({
+      left: [],
+      right: [
+        newAction([['a', 'a']], '=', 3),
+        newAction([['a']], '=', 3),
+      ],
+    }));
+    expect(await merge([
+      newAction([['a', 'a']], '=', 3),
+      newAction([['a']], '=', 3),
+    ], [
+      newAction([['a', 'b']], '=', 3),
+      newAction([['b']], '=', 3),
+    ], { ...machineConfig, merge: mergeHandler })).toEqual({
+      left: [
+        newAction([['b']], '=', 3),
+      ],
+      right: [
+        newAction([['a', 'a']], '=', 3),
+        newAction([['a']], '=', 3),
+      ],
+    });
+    expect(mergeHandler).toHaveBeenCalledWith(['a'], [
+      newAction([['a', 'a']], '=', 3),
+      newAction([['a']], '=', 3),
+    ], [
+      newAction([['a', 'b']], '=', 3),
+    ]);
+  });
 });
