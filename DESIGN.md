@@ -191,6 +191,14 @@ Since two nodes are merged, `a` and `b` both would appear in the merge conflict
 resolver. This is unevitable - avcs cannot guarentee that these actions happen
 in order, and happen only once, if otherwise.
 
+- Left
+  - a = 3
+  - a.c = 5, b.a = 3
+  - d = 6
+- Right
+  - b.a = 3
+  - c = 5
+
 ## Action ID
 The application, or avcs, must provide a way to dispense unique IDs, and attach
 those IDs into every action.

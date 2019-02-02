@@ -4,7 +4,8 @@ export type ActionDomain<T, U> = {
   children: { [key: string]: ActionDomain<T, U> },
   modifyType: number | null | false,
   triggered: boolean,
-  actions: Action<T, U>[],
+  actions: { order: number, action: Action<T, U> }[],
+  aliases: string[][],
 };
 
 function createDomain<T, U>(): ActionDomain<T, U> {
@@ -13,6 +14,7 @@ function createDomain<T, U>(): ActionDomain<T, U> {
     modifyType: null,
     triggered: false,
     actions: [],
+    aliases: [],
   };
 }
 
@@ -28,8 +30,6 @@ function claimDomain<T, U>(domain: ActionDomain<T, U>, scope: ActionScope) {
     domain.modifyType = false;
   }
 }
-
-type Visited = { [key: string]: Visited };
 
 export default function getDomains<T, U>(
   actions: Iterable<Action<T, U>>,
@@ -49,17 +49,18 @@ export default function getDomains<T, U>(
   // only once in the tree, a and b as whole must be merged as well. (That is,
   // if conflict occurs inside there.)
   //
+  // It is not desirable to do merging here, as we're uncertain about other
+  // merging end - therefore we should at least, retain the order of the actions
+  // and the aliases.
+  let order = 0;
   for (const action of actions) {
+    const orderedAction = { order, action };
     const scopes = getScopes(action);
-    let visited: Visited = null;
+    order += 1;
     // The scopes MUST be exclusive - i.e.
     // a.b.c, a.b can't coexist. But a.b.c, a.b.d can coexist.
     scopes.forEach((scope) => {
-      let currentVisited = visited;
-      if (currentVisited == null) {
-        currentVisited = visited = {};
-        root.actions.push(action);
-      }
+      root.actions.push(orderedAction);
       if (scope.keys.length === 0) claimDomain(root, scope);
       else root.modifyType = false;
       scope.keys.reduce(
@@ -68,11 +69,7 @@ export default function getDomains<T, U>(
           if (child == null) {
             child = node.children[key] = createDomain();
           }
-          let visitedChild = currentVisited[key];
-          if (visitedChild == null) {
-            visitedChild = currentVisited[key] = {};
-            child.actions.push(action);
-          }
+          child.actions.push(orderedAction);
           if (i === scope.keys.length - 1) claimDomain(child, scope);
           else child.modifyType = false;
           return child;
