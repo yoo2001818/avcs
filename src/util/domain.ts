@@ -1,6 +1,7 @@
 import { Action, ActionScope } from '../type';
 
 export type ActionDomain<T, U> = {
+  id: number,
   children: { [key: string]: ActionDomain<T, U> },
   modifyType: number | null | false,
   triggered: boolean,
@@ -8,8 +9,9 @@ export type ActionDomain<T, U> = {
   aliases: string[][],
 };
 
-function createDomain<T, U>(): ActionDomain<T, U> {
+function createDomain<T, U>(id: number): ActionDomain<T, U> {
   return {
+    id,
     children: {},
     modifyType: null,
     triggered: false,
@@ -35,41 +37,37 @@ export default function getDomains<T, U>(
   actions: Iterable<Action<T, U>>,
   getScopes: (action: Action<T, U>) => ActionScope[],
 ): ActionDomain<T, U> {
-  const root: ActionDomain<T, U> = createDomain();
+  let nodeId: number = 1;
+  const root: ActionDomain<T, U> = createDomain(0);
   // Action with multiple scopes actually performs a merger - both domains
   // becomes the same.
-  //
-  // In order to do that, we first populate the domains with 'portal', or,
-  // 'tombstone', indicating that the resource has gone to there, not here.
-  //
-  // However, this even adds more difficulty -
-  // root - a - a
-  //      \ b - b
-  // If an action specifies a.a and b.b as its domain, since an action occur
-  // only once in the tree, a and b as whole must be merged as well. (That is,
-  // if conflict occurs inside there.)
-  //
-  // It is not desirable to do merging here, as we're uncertain about other
-  // merging end - therefore we should at least, retain the order of the actions
-  // and the aliases.
+  // 'Merged' scopes must ascend until mutual parent node is met, because,
+  // if a conflict occurs in any parent node, it has to be resolved with the
+  // merged node (basically, scope must be merged when conflict occurs)
   let order = 0;
   for (const action of actions) {
+    const seenTable: { [key: number]: boolean } = {};
     const orderedAction = { order, action };
     const scopes = getScopes(action);
     order += 1;
-    // The scopes MUST be exclusive - i.e.
-    // a.b.c, a.b can't coexist. But a.b.c, a.b.d can coexist.
     scopes.forEach((scope) => {
-      root.actions.push(orderedAction);
+      if (seenTable[root.id] !== true) {
+        seenTable[root.id] = true;
+        root.actions.push(orderedAction);
+      }
       if (scope.keys.length === 0) claimDomain(root, scope);
       else root.modifyType = false;
       scope.keys.reduce(
         (node, key, i) => {
           let child = node.children[key];
           if (child == null) {
-            child = node.children[key] = createDomain();
+            child = node.children[key] = createDomain(nodeId);
+            nodeId += 1;
           }
-          child.actions.push(orderedAction);
+          if (seenTable[child.id] !== true) {
+            seenTable[child.id] = true;
+            child.actions.push(orderedAction);
+          }
           if (i === scope.keys.length - 1) claimDomain(child, scope);
           else child.modifyType = false;
           return child;

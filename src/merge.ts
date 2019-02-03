@@ -31,11 +31,11 @@ async function mergeLevel<T, U>(
   // Check if both left / right has children node. If one of them
   // doesn't have one, we can just go ahead and use the other.
   if (left == null || left.actions.length === 0) {
-    right.actions.forEach(v => output.left.push(v));
+    right.actions.forEach(v => output.left.push(v.action));
     return;
   }
   if (right == null || right.actions.length === 0) {
-    left.actions.forEach(v => output.right.push(v));
+    left.actions.forEach(v => output.right.push(v.action));
     return;
   }
   // Otherwise, traverse down.
@@ -54,13 +54,16 @@ async function mergeLevel<T, U>(
     // any problem.
     if (left.modifyType === false || left.modifyType !== right.modifyType) {
       // It's not. Launch conflict resolution.
-      const result = await config.merge(path, left.actions, right.actions);
+      const result = await config.merge(
+        path,
+        left.actions.map(v => v.action),
+        right.actions.map(v => v.action));
       result.left.forEach(v => output.left.push(v));
       result.right.forEach(v => output.right.push(v));
     } else {
       // Otherwise, merge them in any order.
-      left.actions.forEach(v => output.right.push(v));
-      right.actions.forEach(v => output.left.push(v));
+      left.actions.forEach(v => output.right.push(v.action));
+      right.actions.forEach(v => output.left.push(v.action));
     }
   } else {
     // Merge its children without any order (it shouldn't matter.)
