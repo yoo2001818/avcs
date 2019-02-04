@@ -46,34 +46,36 @@ export default function getDomains<T, U>(
   // merged node (basically, scope must be merged when conflict occurs)
   let order = 0;
   for (const action of actions) {
-    const seenTable: { [key: number]: boolean } = {};
     const orderedAction = { order, action };
     const scopes = getScopes(action);
     order += 1;
-    scopes.forEach((scope) => {
-      if (seenTable[root.id] !== true) {
-        seenTable[root.id] = true;
-        root.actions.push(orderedAction);
+    root.actions.push(orderedAction);
+    if (scopes.every(v => v.keys.length === 0)) {
+      scopes.forEach(scope => claimDomain(root, scope));
+    } else {
+      root.modifyType = false;
+    }
+    let depth = 0;
+    const domains = scopes.map(() => root);
+    while (scopes.some(v => v.keys.length > depth)) {
+      for (let i = 0; i < scopes.length; i += 1) {
+        const scope = scopes[i];
+        const node = domains[i];
+        if (depth > scope.keys.length) continue;
+        const key = scope.keys[depth];
+
+        let child = node.children[key];
+        if (child == null) {
+          child = node.children[key] = createDomain(nodeId);
+          nodeId += 1;
+        }
+        child.actions.push(orderedAction);
+        if (i === scope.keys.length - 1) claimDomain(child, scope);
+        else child.modifyType = false;
+        domains[i] = child;
       }
-      if (scope.keys.length === 0) claimDomain(root, scope);
-      else root.modifyType = false;
-      scope.keys.reduce(
-        (node, key, i) => {
-          let child = node.children[key];
-          if (child == null) {
-            child = node.children[key] = createDomain(nodeId);
-            nodeId += 1;
-          }
-          if (seenTable[child.id] !== true) {
-            seenTable[child.id] = true;
-            child.actions.push(orderedAction);
-          }
-          if (i === scope.keys.length - 1) claimDomain(child, scope);
-          else child.modifyType = false;
-          return child;
-        },
-        root);
-    });
+      depth += 1;
+    }
   }
   return root;
 }
