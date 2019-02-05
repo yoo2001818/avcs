@@ -56,12 +56,15 @@ export default function getDomains<T, U>(
       root.modifyType = false;
     }
     let depth = 0;
+    let hasMore = false;
     const domains = scopes.map(() => root);
-    while (scopes.some(v => v.keys.length > depth)) {
+    do {
+      hasMore = false;
       for (let i = 0; i < scopes.length; i += 1) {
         const scope = scopes[i];
         const node = domains[i];
-        if (depth > scope.keys.length) continue;
+        if (depth >= scope.keys.length) continue;
+        hasMore = depth < scope.keys.length;
         const key = scope.keys[depth];
 
         let child = node.children[key];
@@ -70,12 +73,12 @@ export default function getDomains<T, U>(
           nodeId += 1;
         }
         child.actions.push(orderedAction);
-        if (i === scope.keys.length - 1) claimDomain(child, scope);
+        if (depth === scope.keys.length - 1) claimDomain(child, scope);
         else child.modifyType = false;
         domains[i] = child;
       }
       depth += 1;
-    }
+    } while (hasMore);
   }
   return root;
 }

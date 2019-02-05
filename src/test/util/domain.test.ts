@@ -22,27 +22,37 @@ describe('getDomains', () => {
   it('should create a tree', () => {
     const action = newAction([{ keys: ['users', 'count'], modifyType: 1 }]);
     const action2 = newAction([{ keys: ['users', 'name'], modifyType: null }]);
+    const actionData = { action, order: 0 };
+    const actionData2 = { action: action2, order: 1 };
     expect(getDomains([action, action2], getScopes)).toEqual({
-      actions: [action, action2],
+      actions: [actionData, actionData2],
       modifyType: false,
       triggered: false,
+      aliases: [],
+      id: 0,
       children: {
         users: {
-          actions: [action, action2],
+          actions: [actionData, actionData2],
           modifyType: false,
           triggered: false,
+          aliases: [],
+          id: 1,
           children: {
             count: {
-              actions: [action],
+              actions: [actionData],
               modifyType: 1,
               triggered: true,
               children: {},
+              aliases: [],
+              id: 2,
             },
             name: {
-              actions: [action2],
+              actions: [actionData2],
               modifyType: false,
               triggered: true,
               children: {},
+              aliases: [],
+              id: 3,
             },
           },
         },
@@ -51,35 +61,49 @@ describe('getDomains', () => {
   });
   it('should keep modify type if possible', () => {
     const action = newAction([{ keys: [], modifyType: 1 }]);
+    const actionData = { action, order: 0 };
+    const actionData2 = { action, order: 1 };
     expect(getDomains([action, action], getScopes)).toEqual({
-      actions: [action, action],
+      actions: [actionData, actionData2],
       modifyType: 1,
       triggered: true,
+      aliases: [],
+      id: 0,
       children: {},
     });
   });
   it('should invalidate modify type', () => {
     const action = newAction([{ keys: [], modifyType: 1 }]);
     const action2 = newAction([{ keys: [], modifyType: 2 }]);
+    const actionData = { action, order: 0 };
+    const actionData2 = { action: action2, order: 1 };
     expect(getDomains([action, action2], getScopes)).toEqual({
-      actions: [action, action2],
+      actions: [actionData, actionData2],
       modifyType: false,
       triggered: true,
+      aliases: [],
+      id: 0,
       children: {},
     });
   });
   it('should invalidate modify type if child exists', () => {
     const action = newAction([{ keys: [], modifyType: 1 }]);
     const action2 = newAction([{ keys: ['a'], modifyType: 1 }]);
+    const actionData = { action, order: 0 };
+    const actionData2 = { action: action2, order: 1 };
     expect(getDomains([action, action2], getScopes)).toEqual({
-      actions: [action, action2],
+      actions: [actionData, actionData2],
       modifyType: false,
       triggered: true,
+      aliases: [],
+      id: 0,
       children: {
         a: {
-          actions: [action2],
+          actions: [actionData2],
           modifyType: 1,
           triggered: true,
+          aliases: [],
+          id: 1,
           children: {},
         },
       },
