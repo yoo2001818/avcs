@@ -72,10 +72,24 @@ export default function getDomains<T, U>(
           child = node.children[key] = createDomain(nodeId);
           nodeId += 1;
         }
-        child.actions.push(orderedAction);
         if (depth === scope.keys.length - 1) claimDomain(child, scope);
         else child.modifyType = false;
         domains[i] = child;
+      }
+      for (let i = 0; i < scopes.length; i += 1) {
+        const scope = scopes[i];
+        const node = domains[i];
+        if (depth >= scope.keys.length) continue;
+        let hasConflict = false;
+        for (let j = i + 1; j < scopes.length; j += 1) {
+          if (domains[j] === node) {
+            hasConflict = true;
+          }
+        }
+        if (!hasConflict) {
+          // TODO Handle aliases
+          node.actions.push(orderedAction);
+        }
       }
       depth += 1;
     } while (hasMore);

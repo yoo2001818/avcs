@@ -109,4 +109,45 @@ describe('getDomains', () => {
       },
     });
   });
+  it('should not add same domain twice', () => {
+    const action = newAction([
+      { keys: ['a', 'a'], modifyType: 1 },
+      { keys: ['a', 'b'], modifyType: 1 },
+    ]);
+    const actionData = { action, order: 0 };
+    expect(getDomains([action], getScopes)).toEqual({
+      actions: [actionData],
+      modifyType: false,
+      triggered: false,
+      aliases: [],
+      id: 0,
+      children: {
+        a: {
+          actions: [actionData],
+          modifyType: false,
+          triggered: false,
+          aliases: [],
+          id: 1,
+          children: {
+            a: {
+              actions: [actionData],
+              modifyType: 1,
+              triggered: true,
+              aliases: [['a', 'b']],
+              id: 2,
+              children: {},
+            },
+            b: {
+              actions: [actionData],
+              modifyType: 1,
+              triggered: true,
+              aliases: [['a', 'a']],
+              id: 3,
+              children: {},
+            },
+          },
+        },
+      },
+    });
+  });
 });
