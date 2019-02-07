@@ -6,7 +6,7 @@ export type ActionDomain<T, U> = {
   modifyType: number | null | false,
   triggered: boolean,
   actions: { order: number, action: Action<T, U> }[],
-  aliases: string[][],
+  aliases: (string | number)[][],
 };
 
 function createDomain<T, U>(id: number): ActionDomain<T, U> {
@@ -86,8 +86,8 @@ export default function getDomains<T, U>(
             hasConflict = true;
           }
         }
+        node.aliases.push(scope.keys);
         if (!hasConflict) {
-          // TODO Handle aliases
           node.actions.push(orderedAction);
         }
       }
