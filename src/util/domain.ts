@@ -80,15 +80,23 @@ export default function getDomains<T, U>(
         const scope = scopes[i];
         const node = domains[i];
         if (depth >= scope.keys.length) continue;
+        let hasConflictBefore = false;
         let hasConflict = false;
-        for (let j = i + 1; j < scopes.length; j += 1) {
-          if (domains[j] === node) {
-            hasConflict = true;
+        for (let j = 0; j < scopes.length; j += 1) {
+          if (domains[j] === node && i !== j) {
+            hasConflict = j > i;
+            hasConflictBefore = true;
           }
         }
-        node.aliases.push(scope.keys);
         if (!hasConflict) {
           node.actions.push(orderedAction);
+        }
+        if (!hasConflictBefore) {
+          for (let j = 0; j < scopes.length; j += 1) {
+            if (j !== i) {
+              domains[j].aliases.push(scope.keys);
+            }
+          }
         }
       }
       depth += 1;
