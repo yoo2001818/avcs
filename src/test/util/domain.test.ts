@@ -150,4 +150,54 @@ describe('getDomains', () => {
       },
     });
   });
+  it('should register alias when child diverges', () => {
+    const action = newAction([
+      { keys: ['a', 'a'], modifyType: 1 },
+      { keys: ['b', 'b'], modifyType: 1 },
+    ]);
+    const actionData = { action, order: 0 };
+    expect(getDomains([action], getScopes)).toEqual({
+      actions: [actionData],
+      modifyType: false,
+      triggered: false,
+      aliases: [],
+      id: 0,
+      children: {
+        a: {
+          actions: [actionData],
+          modifyType: false,
+          triggered: false,
+          aliases: [['b', 'b']],
+          id: 1,
+          children: {
+            a: {
+              actions: [actionData],
+              modifyType: 1,
+              triggered: true,
+              aliases: [['b', 'b']],
+              id: 3,
+              children: {},
+            },
+          },
+        },
+        b: {
+          actions: [actionData],
+          modifyType: false,
+          triggered: false,
+          aliases: [['a', 'a']],
+          id: 2,
+          children: {
+            b: {
+              actions: [actionData],
+              modifyType: 1,
+              triggered: true,
+              aliases: [['a', 'a']],
+              id: 4,
+              children: {},
+            },
+          },
+        },
+      },
+    });
+  });
 });
