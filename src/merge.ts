@@ -16,7 +16,8 @@ export default async function merge<T, U>(
   // MUST be treated as whole, otherwise it'll be executed multiple times.
 
   // Recursively traverse down the tree.
-  return mergeLevel(leftDomain, rightDomain, config, []);
+  return mergeLevel(leftDomain, rightDomain, config, [],
+    leftDomain, rightDomain);
 }
 
 async function mergeLevel<T, U>(
@@ -24,6 +25,8 @@ async function mergeLevel<T, U>(
   right: ActionDomain<T, U>,
   config: MachineConfig<T, U>,
   path: (string | number)[],
+  leftRoot: ActionDomain<T, U>,
+  rightRoot: ActionDomain<T, U>,
   output: { left: Action<T, U>[], right: Action<T, U>[] } = {
     left: [], right: [],
   },
@@ -53,6 +56,9 @@ async function mergeLevel<T, U>(
     // Check if the node is compatiable, so it can be merged together without
     // any problem.
     if (left.modifyType === false || left.modifyType !== right.modifyType) {
+      if (left.aliases.length !== 0 || right.aliases.length !== 0) {
+        // TODO Fetch the other node and merge with it.
+      }
       // It's not. Launch conflict resolution.
       const result = await config.merge(
         path,
@@ -70,13 +76,13 @@ async function mergeLevel<T, U>(
     for (const key in left.children) {
       await mergeLevel(
         left.children[key], right.children[key],
-        config, [...path, key], output);
+        config, [...path, key], leftRoot, rightRoot, output);
     }
     for (const key in right.children) {
       if (left.children[key] != null) continue;
       await mergeLevel(
         left.children[key], right.children[key],
-        config, [...path, key], output);
+        config, [...path, key], leftRoot, rightRoot, output);
     }
   }
   return output;
