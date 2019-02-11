@@ -1,6 +1,12 @@
 import { Action, MachineConfig } from './type';
 import getDomain, { ActionDomain } from './util/domain';
 
+type MergeContext<T, U> = {
+  root: { left: ActionDomain<T, U>, right: ActionDomain<T, U> },
+  skipNodes: { left: { [key: number]: true }, right: { [key: number]: true } },
+  output: { left: Action<T, U>[], right: Action<T, U>[] },
+};
+
 export default async function merge<T, U>(
   left: Action<T, U>[],
   right: Action<T, U>[],
@@ -14,10 +20,14 @@ export default async function merge<T, U>(
   // preserved.
   // However, if a single action is involved in two or more conflicts, they
   // MUST be treated as whole, otherwise it'll be executed multiple times.
+  const context: MergeContext<T, U> = {
+    root: { left: leftDomain, right: rightDomain },
+    skipNodes: { left: {}, right: {} },
+    output: { left: [], right: [] },
+  };
 
   // Recursively traverse down the tree.
-  return mergeLevel(leftDomain, rightDomain, config, [],
-    leftDomain, rightDomain);
+  return mergeLevel(leftDomain, rightDomain, config, [], context);
 }
 
 async function mergeLevel<T, U>(
@@ -25,20 +35,16 @@ async function mergeLevel<T, U>(
   right: ActionDomain<T, U>,
   config: MachineConfig<T, U>,
   path: (string | number)[],
-  leftRoot: ActionDomain<T, U>,
-  rightRoot: ActionDomain<T, U>,
-  output: { left: Action<T, U>[], right: Action<T, U>[] } = {
-    left: [], right: [],
-  },
-): Promise<{ left: Action<T, U>[], right: Action<T, U>[] }> {
+  context: MergeContext<T, U>,
+): Promise<void> {
   // Check if both left / right has children node. If one of them
   // doesn't have one, we can just go ahead and use the other.
   if (left == null || left.actions.length === 0) {
-    right.actions.forEach(v => output.left.push(v.action));
+    right.actions.forEach(v => context.output.left.push(v.action));
     return;
   }
   if (right == null || right.actions.length === 0) {
-    left.actions.forEach(v => output.right.push(v.action));
+    left.actions.forEach(v => context.output.right.push(v.action));
     return;
   }
   // Otherwise, traverse down.
@@ -52,6 +58,10 @@ async function mergeLevel<T, U>(
   // However, an action can reside in multiple scopes. If that happens, and
   // merge conflict occurs, we must treat them as same - both 'a' and 'b' domain
   // must be treated as whole.
+  if (context.skipNodes.left[left.id] || context.skipNodes.right[right.id]) {
+    // We've already processed this node; skip it.
+    return;
+  }
   if (left.triggered || right.triggered) {
     // Check if the node is compatiable, so it can be merged together without
     // any problem.
@@ -64,26 +74,25 @@ async function mergeLevel<T, U>(
         path,
         left.actions.map(v => v.action),
         right.actions.map(v => v.action));
-      result.left.forEach(v => output.left.push(v));
-      result.right.forEach(v => output.right.push(v));
+      result.left.forEach(v => context.output.left.push(v));
+      result.right.forEach(v => context.output.right.push(v));
     } else {
       // Otherwise, merge them in any order.
-      left.actions.forEach(v => output.right.push(v.action));
-      right.actions.forEach(v => output.left.push(v.action));
+      left.actions.forEach(v => context.output.right.push(v.action));
+      right.actions.forEach(v => context.output.left.push(v.action));
     }
   } else {
     // Merge its children without any order (it shouldn't matter.)
     for (const key in left.children) {
       await mergeLevel(
         left.children[key], right.children[key],
-        config, [...path, key], leftRoot, rightRoot, output);
+        config, [...path, key], context);
     }
     for (const key in right.children) {
       if (left.children[key] != null) continue;
       await mergeLevel(
         left.children[key], right.children[key],
-        config, [...path, key], leftRoot, rightRoot, output);
+        config, [...path, key], context);
     }
   }
-  return output;
 }
