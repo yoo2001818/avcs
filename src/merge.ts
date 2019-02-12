@@ -30,6 +30,13 @@ export default async function merge<T, U>(
   return mergeLevel(leftDomain, rightDomain, config, [], context);
 }
 
+async function findNode<T, U>(
+  root: ActionDomain<T, U>,
+  path: (string | number)[],
+) {
+  return path.reduce((prev, segment) => prev.children[segment], root);
+}
+
 async function mergeLevel<T, U>(
   left: ActionDomain<T, U>,
   right: ActionDomain<T, U>,
@@ -67,7 +74,11 @@ async function mergeLevel<T, U>(
     // any problem.
     if (left.modifyType === false || left.modifyType !== right.modifyType) {
       if (left.aliases.length !== 0 || right.aliases.length !== 0) {
-        // TODO Fetch the other node and merge with it.
+        // Fetch the other node and merge with it.
+        let leftNodes = left.aliases.map(path =>
+          findNode(context.root.left, path));
+        let rightNodes = right.aliases.map(path =>
+          findNode(context.root.right, path));
       }
       // It's not. Launch conflict resolution.
       const result = await config.merge(
