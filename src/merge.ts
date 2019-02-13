@@ -1,6 +1,44 @@
 import { Action, MachineConfig } from './type';
 import getDomain, { ActionDomain } from './util/domain';
 
+function findNode<T, U>(
+  root: ActionDomain<T, U>,
+  path: (string | number)[],
+) {
+  return path.reduce((prev, segment) => prev.children[segment], root);
+}
+
+function mergeBuckets<T>(buckets: T[][], getValue: (value: T) => number) {
+  let bucketsBuf = buckets.slice();
+  const bucketsIndex = buckets.map(() => 0);
+  const output: T[] = [];
+  while (bucketsBuf.length > 0) {
+    let smallest: T = null;
+    let smallestIndex: number = null;
+    let smallestValue: number = null;
+    for (let i = 0; i < bucketsBuf.length; i += 1) {
+      const bucket = bucketsBuf[i];
+      const index = bucketsIndex[i];
+      if (bucket.length <= index) {
+        bucketsBuf = bucketsBuf.filter((_, j) => j !== i);
+        i -= 1;
+        continue;
+      }
+      const id = getValue(bucket[index]);
+      if (smallestValue == null || id < smallestValue) {
+        smallestValue = id;
+        smallest = bucket[index];
+        smallestIndex = i;
+      }
+    }
+    if (smallest != null) {
+      bucketsIndex[smallestIndex] += 1;
+      output.push(smallest);
+    }
+  }
+  return output;
+}
+
 export default async function merge<T, U>(
   left: Action<T, U>[],
   right: Action<T, U>[],
@@ -74,8 +112,18 @@ export default async function merge<T, U>(
     if (left.modifyType === false || left.modifyType !== right.modifyType) {
       if (left.aliases.length !== 0 || right.aliases.length !== 0) {
         // Fetch the other node and merge with it.
-        let leftNodes = left.aliases.map(path => findNode(leftRoot, path));
-        let rightNodes = right.aliases.map(path => findNode(rightRoot, path));
+        let leftActions = mergeBuckets(
+          [
+            left,
+            ...left.aliases.map(path => findNode(leftRoot, path)),
+          ].map(v => v.actions),
+          v => v.order);
+        let rightNodes = mergeBuckets(
+          [
+            right,
+            ...right.aliases.map(path => findNode(rightRoot, path)),
+          ].map(v => v.actions),
+          v => v.order);
       }
       // It's not. Launch conflict resolution.
       const result = await config.merge(
@@ -91,11 +139,4 @@ export default async function merge<T, U>(
     }
   }
   return { left: leftOutput, right: rightOutput };
-}
-
-async function findNode<T, U>(
-  root: ActionDomain<T, U>,
-  path: (string | number)[],
-) {
-  return path.reduce((prev, segment) => prev.children[segment], root);
 }
