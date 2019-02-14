@@ -110,28 +110,33 @@ export default async function merge<T, U>(
     // Check if the node is compatiable, so it can be merged together without
     // any problem.
     if (left.modifyType === false || left.modifyType !== right.modifyType) {
+      // It's not. Launch conflict resolution.
       if (left.aliases.length !== 0 || right.aliases.length !== 0) {
         // Fetch the other node and merge with it.
-        let leftActions = mergeBuckets(
-          [
-            left,
-            ...left.aliases.map(path => findNode(leftRoot, path)),
-          ].map(v => v.actions),
+        const leftNodes = left.aliases.map(path => findNode(leftRoot, path));
+        const rightNodes = right.aliases.map(path => findNode(rightRoot, path));
+        const leftActions = mergeBuckets(
+          [left, ...leftNodes].map(v => v.actions),
           v => v.order);
-        let rightNodes = mergeBuckets(
-          [
-            right,
-            ...right.aliases.map(path => findNode(rightRoot, path)),
-          ].map(v => v.actions),
+        const rightActions = mergeBuckets(
+          [right, ...rightNodes].map(v => v.actions),
           v => v.order);
+        const result = await config.merge(
+          path,
+          leftActions.map(v => v.action),
+          rightActions.map(v => v.action));
+        leftNodes.forEach(({ id }) => leftSkipNodes[id] = true);
+        rightNodes.forEach(({ id }) => rightSkipNodes[id] = true);
+        result.left.forEach(v => rightOutput.push(v));
+        result.right.forEach(v => leftOutput.push(v));
+      } else {
+        const result = await config.merge(
+          path,
+          left.actions.map(v => v.action),
+          right.actions.map(v => v.action));
+        result.left.forEach(v => rightOutput.push(v));
+        result.right.forEach(v => leftOutput.push(v));
       }
-      // It's not. Launch conflict resolution.
-      const result = await config.merge(
-        path,
-        left.actions.map(v => v.action),
-        right.actions.map(v => v.action));
-      result.left.forEach(v => rightOutput.push(v));
-      result.right.forEach(v => leftOutput.push(v));
     } else {
       // Otherwise, merge them in any order.
       left.actions.forEach(v => rightOutput.push(v.action));
