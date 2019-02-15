@@ -63,7 +63,9 @@ export default async function merge<T, U>(
   // MUST be treated as whole, otherwise it'll be executed multiple times.
   while (queue.length > 0) {
     const { left, right, path } = queue.shift();
-    if (leftSkipNodes[left.id] || rightSkipNodes[right.id]) {
+    if ((left != null && leftSkipNodes[left.id]) ||
+      (right != null && rightSkipNodes[right.id])
+    ) {
       // We've already processed this node; skip it.
       continue;
     }
@@ -127,15 +129,15 @@ export default async function merge<T, U>(
           rightActions.map(v => v.action));
         leftNodes.forEach(({ id }) => leftSkipNodes[id] = true);
         rightNodes.forEach(({ id }) => rightSkipNodes[id] = true);
-        result.left.forEach(v => rightOutput.push(v));
-        result.right.forEach(v => leftOutput.push(v));
+        result.left.forEach(v => leftOutput.push(v));
+        result.right.forEach(v => rightOutput.push(v));
       } else {
         const result = await config.merge(
           path,
           left.actions.map(v => v.action),
           right.actions.map(v => v.action));
-        result.left.forEach(v => rightOutput.push(v));
-        result.right.forEach(v => leftOutput.push(v));
+        result.left.forEach(v => leftOutput.push(v));
+        result.right.forEach(v => rightOutput.push(v));
       }
     } else {
       // Otherwise, merge them in any order.
