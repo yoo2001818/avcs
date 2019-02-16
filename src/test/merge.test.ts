@@ -83,7 +83,7 @@ describe('merge', () => {
         newAction([['a', 'x']], '+', 3),
       ],
     });
-    expect(mergeHandler).toHaveBeenCalledWith(['a', 'z'], [
+    expect(mergeHandler).toHaveBeenCalledWith([['a', 'z']], [
       newAction([['a', 'z']], '=', 2),
     ], [
       newAction([['a', 'z']], '=', 3),
@@ -113,11 +113,43 @@ describe('merge', () => {
         newAction([['a']], '=', 3),
       ],
     });
-    expect(mergeHandler).toHaveBeenCalledWith(['a'], [
+    expect(mergeHandler).toHaveBeenCalledWith([['a']], [
       newAction([['a', 'a']], '=', 3),
       newAction([['a']], '=', 3),
     ], [
       newAction([['a', 'b']], '=', 3),
+    ]);
+  });
+  it('should combine scopes if multiple scope actions exist', async () => {
+    const mergeHandler = jest.fn();
+    mergeHandler.mockReturnValue(Promise.resolve({
+      left: [
+        newAction([['b', 'b']], '=', 6),
+      ],
+      right: [
+        newAction([['a', 'b']], '=', 4),
+      ],
+    }));
+    expect(await merge([
+      newAction([['a', 'a']], '=', 3),
+      newAction([['a', 'b'], ['b', 'b']], '=', 4),
+    ], [
+      newAction([['b', 'a']], '=', 5),
+      newAction([['b', 'b']], '=', 6),
+    ], { ...machineConfig, merge: mergeHandler })).toEqual({
+      left: [
+        newAction([['b', 'b']], '=', 6),
+        newAction([['b', 'a']], '=', 5),
+      ],
+      right: [
+        newAction([['a', 'a']], '=', 3),
+        newAction([['a', 'b']], '=', 4),
+      ],
+    });
+    expect(mergeHandler).toHaveBeenCalledWith([['b', 'b'], ['a', 'b']], [
+      newAction([['a', 'b'], ['b', 'b']], '=', 4),
+    ], [
+      newAction([['b', 'b']], '=', 6),
     ]);
   });
 });

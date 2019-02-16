@@ -124,7 +124,7 @@ export default async function merge<T, U>(
           [right, ...rightNodes].map(v => v.actions),
           v => v.order);
         const result = await config.merge(
-          path,
+          [path, ...left.aliases, ...right.aliases],
           leftActions.map(v => v.action),
           rightActions.map(v => v.action));
         leftNodes.forEach(({ id }) => leftSkipNodes[id] = true);
@@ -133,7 +133,7 @@ export default async function merge<T, U>(
         result.right.forEach(v => rightOutput.push(v));
       } else {
         const result = await config.merge(
-          path,
+          [path],
           left.actions.map(v => v.action),
           right.actions.map(v => v.action));
         result.left.forEach(v => leftOutput.push(v));
