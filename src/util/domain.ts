@@ -4,6 +4,7 @@ export type ActionDomain<T, U> = {
   id: number,
   children: { [key: string]: ActionDomain<T, U> },
   modifyType: number | null | false,
+  hasAlias: boolean,
   triggered: boolean,
   actions: { order: number, action: Action<T, U> }[],
   aliases: (string | number)[][],
@@ -14,6 +15,7 @@ function createDomain<T, U>(id: number): ActionDomain<T, U> {
     id,
     children: {},
     modifyType: null,
+    hasAlias: false,
     triggered: false,
     actions: [],
     aliases: [],
@@ -55,6 +57,12 @@ export default function getDomains<T, U>(
     } else {
       root.modifyType = false;
     }
+    for (let i = 1; i < scopes.length; i += 1) {
+      if (scopes[0].keys[0] !== scopes[i].keys[0]) {
+        root.hasAlias = true;
+        break;
+      }
+    }
     let depth = 0;
     let hasMore = false;
     const domains = scopes.map(() => root);
@@ -75,6 +83,17 @@ export default function getDomains<T, U>(
         if (depth === scope.keys.length - 1) claimDomain(child, scope);
         else child.modifyType = false;
         domains[i] = child;
+      }
+      // Alias checking
+      for (let i = 1; i < scopes.length; i += 1) {
+        if (domains[0] !== domains[i] ||
+          scopes[0].keys[depth + 1] !== scopes[i].keys[depth + 1]
+        ) {
+          for (let i = 0; i < scopes.length; i += 1) {
+            domains[i].hasAlias = true;
+          }
+          break;
+        }
       }
       for (let i = 0; i < scopes.length; i += 1) {
         const scope = scopes[i];

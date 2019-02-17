@@ -39,65 +39,52 @@ function mergeBuckets<T>(buckets: T[][], getValue: (value: T) => number) {
   return output;
 }
 
-export default async function merge<T, U>(
-  left: Action<T, U>[],
-  right: Action<T, U>[],
+type MergePair<V> = { left: V, right: V };
+
+type MergeContext<T, U> = {
   config: MachineConfig<T, U>,
-) {
-  const leftRoot = getDomain(left, config.getScopes);
-  const rightRoot = getDomain(right, config.getScopes);
-  const leftOutput: Action<T, U>[] = [];
-  const rightOutput: Action<T, U>[] = [];
-  const leftSkipNodes: { [key: number]: true } = {};
-  const rightSkipNodes: { [key: number]: true } = {};
-  const queue: {
-    left: ActionDomain<T, U>,
-    right: ActionDomain<T, U>,
-    path: (string | number)[],
-  }[] = [{ left: leftRoot, right: rightRoot, path: [] }];
-  // Traverse down the tree, and detect any confliction.
-  // The confliction must be small as possible - it's okay to issue more than
-  // two merge conflicts, as we can ensure that their orders don't need to be
-  // preserved.
-  // However, if a single action is involved in two or more conflicts, they
-  // MUST be treated as whole, otherwise it'll be executed multiple times.
-  while (queue.length > 0) {
-    const { left, right, path } = queue.shift();
-    if ((left != null && leftSkipNodes[left.id]) ||
-      (right != null && rightSkipNodes[right.id])
-    ) {
-      // We've already processed this node; skip it.
-      continue;
-    }
-    // Check if both left / right has children node. If one of them
-    // doesn't have one, we can just go ahead and use the other.
-    if (left == null || left.actions.length === 0) {
-      right.actions.forEach(v => leftOutput.push(v.action));
-      continue;
-    }
+  root: MergePair<ActionDomain<T, U>>,
+  output: MergePair<Action<T, U>[]>,
+  skipNodes: MergePair<{ [key: number]: true }>,
+};
+
+export async function mergeLevel<T, U>(
+  path: (string | number)[],
+  left: ActionDomain<T, U> | null,
+  right: ActionDomain<T, U> | null,
+  context: MergeContext<T, U>,
+): Promise<MergePair<Action<T, U>[]>> {
+  /*
+   * L/R    null     alias    trig   norm     empty
+   * null   D/C      -        -      -        -
+   * alias  descend  descend  -      -        -
+   * trig   merge    merge    merge  -        -
+   * norm   prune    descend  merge  descend  -
+   * empty  D/C      descend  prune  prune    prune
+   */
+  // Check if we've already process this node.
+  if (left != null && context.skipNodes.left[left.id]) return context.output;
+  if (right != null && context.skipNodes.right[right.id]) return context.output;
+  // If left / right is null or empty, and the other one doesn't have any
+  // aliases, we can just go ahead and use the other.
+  if (left != null && !left.hasAlias) {
     if (right == null || right.actions.length === 0) {
-      left.actions.forEach(v => rightOutput.push(v.action));
-      continue;
+      left.actions.forEach(v => context.output.right.push(v.action));
+      return context.output;
     }
-    if (!left.triggered && !right.triggered) {
-      // Merge its children without any order (it shouldn't matter.)
-      for (const key in left.children) {
-        queue.push({
-          left: left.children[key],
-          right: right.children[key],
-          path: [...path, key],
-        });
-      }
-      for (const key in right.children) {
-        if (left.children[key] != null) continue;
-        queue.push({
-          left: left.children[key],
-          right: right.children[key],
-          path: [...path, key],
-        });
-      }
-      continue;
+  }
+  if (right != null && !right.hasAlias) {
+    if (left == null || left.actions.length === 0) {
+      right.actions.forEach(v => context.output.left.push(v.action));
+      return context.output;
     }
+  }
+  // Run merge logic if one of them is triggered, or has direct aliases.
+  const leftTriggered = left != null &&
+    (left.triggered || left.aliases.length > 0);
+  const rightTriggered = right != null &&
+    (right.triggered || right.aliases.length > 0);
+  if (leftTriggered || rightTriggered) {
     // In order for conflict to occur, all of these must be true:
     // 1. Both has actions inside the node.
     // 2. One of them has triggered that specific node.
@@ -145,5 +132,40 @@ export default async function merge<T, U>(
       right.actions.forEach(v => leftOutput.push(v.action));
     }
   }
-  return { left: leftOutput, right: rightOutput };
+  // Otherwise, directly descend into its children.
+  if (left != null) {
+    for (const key in left.children) {
+      mergeLevel(
+        [...path, key],
+        left.children[key],
+        right && right.children[key],
+        context);
+    }
+  }
+  if (right != null) {
+    for (const key in right.children) {
+      if (left != null && left.children[key] != null) continue;
+      mergeLevel(
+        [...path, key],
+        left && left.children[key],
+        right.children[key],
+        context);
+    }
+  }
+  return context.output;
+}
+
+export default async function merge<T, U>(
+  left: Action<T, U>[],
+  right: Action<T, U>[],
+  config: MachineConfig<T, U>,
+) {
+  const leftRoot = getDomain(left, config.getScopes);
+  const rightRoot = getDomain(right, config.getScopes);
+  return mergeLevel([], leftRoot, rightRoot, {
+    config,
+    root: { left: leftRoot, right: rightRoot },
+    output: { left: [], right: [] },
+    skipNodes: { left: {}, right: {} },
+  });
 }
