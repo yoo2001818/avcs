@@ -80,15 +80,25 @@ export async function mergeLevel<T, U>(
     }
   }
   // Run merge logic if one of them is triggered, or has direct aliases.
-  const leftTriggered = left != null &&
-    (left.triggered || left.aliases.length > 0);
-  const rightTriggered = right != null &&
-    (right.triggered || right.aliases.length > 0);
+  const leftTriggered = left != null && left.triggered;
+  const rightTriggered = right != null && right.triggered;
   if (leftTriggered || rightTriggered) {
+    const leftNodes = left != null ?
+      left.aliases.map(path => findNode(context.root.left, path)) :
+      [];
+    const rightNodes = right != null ?
+      right.aliases.map(path => findNode(context.root.right, path)) :
+      [];
+    const hasConflict = left != null && right != null &&
+      (left.modifyType === false || left.modifyType !== right.modifyType);
+    const isLeftAliasOccupied = leftNodes.some(node => node.triggered);
+    const isRightAliasOccupied = rightNodes.some(node => node.triggered);
     // In order for conflict to occur, all of these must be true:
-    // 1. Both has actions inside the node.
+    // 1. Both side has actions inside the node.
     // 2. One of them has triggered that specific node.
-    // 3. modifyType is both false, or does not equal to each other.
+    // 3. For all node pairs:
+    //    modifyType is both false, or does not equal to each other.
+    //    However, let's not compare against that for now...
     // If this happens, we can just pass these all actions to merge conflict
     // handler, and use its results to merge them.
     //
@@ -98,39 +108,28 @@ export async function mergeLevel<T, U>(
     //
     // Check if the node is compatiable, so it can be merged together without
     // any problem.
-    if (left.modifyType === false || left.modifyType !== right.modifyType) {
-      // It's not. Launch conflict resolution.
-      if (left.aliases.length !== 0 || right.aliases.length !== 0) {
-        // Fetch the other node and merge with it.
-        const leftNodes = left.aliases.map(path => findNode(leftRoot, path));
-        const rightNodes = right.aliases.map(path => findNode(rightRoot, path));
-        const leftActions = mergeBuckets(
-          [left, ...leftNodes].map(v => v.actions),
-          v => v.order);
-        const rightActions = mergeBuckets(
-          [right, ...rightNodes].map(v => v.actions),
-          v => v.order);
-        const result = await config.merge(
-          [path, ...left.aliases, ...right.aliases],
-          leftActions.map(v => v.action),
-          rightActions.map(v => v.action));
-        leftNodes.forEach(({ id }) => leftSkipNodes[id] = true);
-        rightNodes.forEach(({ id }) => rightSkipNodes[id] = true);
-        result.left.forEach(v => leftOutput.push(v));
-        result.right.forEach(v => rightOutput.push(v));
-      } else {
-        const result = await config.merge(
-          [path],
-          left.actions.map(v => v.action),
-          right.actions.map(v => v.action));
-        result.left.forEach(v => leftOutput.push(v));
-        result.right.forEach(v => rightOutput.push(v));
-      }
+    if (hasConflict || isLeftAliasOccupied || isRightAliasOccupied) {
+      // Fetch the other node and merge with it.
+      const leftActions = mergeBuckets(
+        [left, ...leftNodes].map(v => v.actions),
+        v => v.order);
+      const rightActions = mergeBuckets(
+        [right, ...rightNodes].map(v => v.actions),
+        v => v.order);
+      const result = await context.config.merge(
+        [path, ...left.aliases, ...right.aliases],
+        leftActions.map(v => v.action),
+        rightActions.map(v => v.action));
+      leftNodes.forEach(({ id }) => context.skipNodes.left[id] = true);
+      rightNodes.forEach(({ id }) => context.skipNodes.right[id] = true);
+      result.left.forEach(v => context.output.left.push(v));
+      result.right.forEach(v => context.output.right.push(v));
     } else {
       // Otherwise, merge them in any order.
-      left.actions.forEach(v => rightOutput.push(v.action));
-      right.actions.forEach(v => leftOutput.push(v.action));
+      left.actions.forEach(v => context.output.right.push(v.action));
+      right.actions.forEach(v => context.output.left.push(v.action));
     }
+    return context.output;
   }
   // Otherwise, directly descend into its children.
   if (left != null) {
