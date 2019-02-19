@@ -146,7 +146,7 @@ describe('merge', () => {
         newAction([['a', 'b']], '=', 4),
       ],
     });
-    expect(mergeHandler).toHaveBeenCalledWith([['b', 'b'], ['a', 'b']], [
+    expect(mergeHandler).toHaveBeenCalledWith([['a', 'b'], ['b', 'b']], [
       newAction([['a', 'b'], ['b', 'b']], '=', 4),
     ], [
       newAction([['b', 'b']], '=', 6),

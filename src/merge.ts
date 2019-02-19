@@ -111,13 +111,18 @@ export async function mergeLevel<T, U>(
     if (hasConflict || isLeftAliasOccupied || isRightAliasOccupied) {
       // Fetch the other node and merge with it.
       const leftActions = mergeBuckets(
-        [left, ...leftNodes].map(v => v.actions),
+        [left, ...leftNodes].filter(v => v != null).map(v => v.actions),
         v => v.order);
       const rightActions = mergeBuckets(
-        [right, ...rightNodes].map(v => v.actions),
+        [right, ...rightNodes].filter(v => v != null).map(v => v.actions),
         v => v.order);
+      const paths = [
+        path,
+        ...(left != null ? left.aliases : []),
+        ...(right != null ? right.aliases : []),
+      ];
       const result = await context.config.merge(
-        [path, ...left.aliases, ...right.aliases],
+        paths,
         leftActions.map(v => v.action),
         rightActions.map(v => v.action));
       leftNodes.forEach(({ id }) => context.skipNodes.left[id] = true);
@@ -134,7 +139,7 @@ export async function mergeLevel<T, U>(
   // Otherwise, directly descend into its children.
   if (left != null) {
     for (const key in left.children) {
-      mergeLevel(
+      await mergeLevel(
         [...path, key],
         left.children[key],
         right && right.children[key],
@@ -144,7 +149,7 @@ export async function mergeLevel<T, U>(
   if (right != null) {
     for (const key in right.children) {
       if (left != null && left.children[key] != null) continue;
-      mergeLevel(
+      await mergeLevel(
         [...path, key],
         left && left.children[key],
         right.children[key],
