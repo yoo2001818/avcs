@@ -5,7 +5,13 @@ function findNode<T, U>(
   root: ActionDomain<T, U>,
   path: (string | number)[],
 ) {
-  return path.reduce((prev, segment) => prev.children[segment], root);
+  return path.reduce(
+    (prev, segment) => prev == null ? null : prev.children[segment],
+    root);
+}
+
+function dedupePaths(paths: (string | number)[][]) {
+  return paths;
 }
 
 function mergeBuckets<T>(buckets: T[][], getValue: (value: T) => number) {
@@ -83,12 +89,14 @@ export async function mergeLevel<T, U>(
   const leftTriggered = left != null && left.triggered;
   const rightTriggered = right != null && right.triggered;
   if (leftTriggered || rightTriggered) {
-    const leftNodes = left != null ?
-      left.aliases.map(path => findNode(context.root.left, path)) :
-      [];
-    const rightNodes = right != null ?
-      right.aliases.map(path => findNode(context.root.right, path)) :
-      [];
+    const additionalPaths = dedupePaths([
+      ...left != null ? left.aliases : [],
+      ...right != null ? right.aliases : [],
+    ]);
+    const leftNodes =
+      additionalPaths.map(path => findNode(context.root.left, path));
+    const rightNodes =
+      additionalPaths.map(path => findNode(context.root.right, path));
     const hasConflict = left != null && right != null &&
       (left.modifyType === false || left.modifyType !== right.modifyType);
     const isLeftAliasOccupied = leftNodes.some(node => node.triggered);
@@ -116,11 +124,7 @@ export async function mergeLevel<T, U>(
       const rightActions = mergeBuckets(
         [right, ...rightNodes].filter(v => v != null).map(v => v.actions),
         v => v.order);
-      const paths = [
-        path,
-        ...(left != null ? left.aliases : []),
-        ...(right != null ? right.aliases : []),
-      ];
+      const paths = [path, ...additionalPaths];
       const result = await context.config.merge(
         paths,
         leftActions.map(v => v.action),
