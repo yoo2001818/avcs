@@ -11,7 +11,22 @@ function findNode<T, U>(
 }
 
 function dedupePaths(paths: (string | number)[][]) {
-  return paths;
+  // TODO It should be optimizied (can it be?)
+  const output: (string | number)[][] = [];
+  for (let i = 0; i < paths.length; i += 1) {
+    const path = paths[i];
+    let hasConflict: boolean = false;
+    for (let j = 0; j < i; j += 1) {
+      if (path.length === paths[j].length &&
+        path.every((v, k) => v === paths[j][k])
+      ) {
+        hasConflict = true;
+        break;
+      }
+    }
+    if (!hasConflict) output.push(path);
+  }
+  return output;
 }
 
 function mergeBuckets<T>(buckets: T[][], getValue: (value: T) => number) {
