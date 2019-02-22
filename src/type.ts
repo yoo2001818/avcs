@@ -23,7 +23,7 @@ export type ActionScope = {
 };
 
 export type MachineConfig<T, U> = {
-  getScopes: (action: Action<T, U>) => ActionScope[],
+  getScopes: (data: T) => ActionScope[],
   getReverse: (data: T, undoData: U) => T,
   merge: (
     offending: (string | number)[][],

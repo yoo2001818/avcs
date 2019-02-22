@@ -35,9 +35,16 @@ function claimDomain<T, U>(domain: ActionDomain<T, U>, scope: ActionScope) {
   }
 }
 
+function getActionScopes<T, U>(
+  action: Action<T, U>,
+  getScopes: (data: T) => ActionScope[],
+): ActionScope[] {
+  return getScopes(action.data);
+}
+
 export default function getDomains<T, U>(
   actions: Iterable<Action<T, U>>,
-  getScopes: (action: Action<T, U>) => ActionScope[],
+  getScopes: (data: T) => ActionScope[],
 ): ActionDomain<T, U> {
   let nodeId: number = 1;
   const root: ActionDomain<T, U> = createDomain(0);
@@ -49,7 +56,7 @@ export default function getDomains<T, U>(
   let order = 0;
   for (const action of actions) {
     const orderedAction = { order, action };
-    const scopes = getScopes(action);
+    const scopes = getActionScopes(action, getScopes);
     order += 1;
     root.actions.push(orderedAction);
     if (scopes.every(v => v.keys.length === 0)) {
