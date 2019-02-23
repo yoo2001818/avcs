@@ -25,7 +25,7 @@ export default class Machine<T, U> {
     }
     return output;
   }
-  async run(data: T, undoId?: string): Promise<string> {
+  async run(data: T, undoId?: string): Promise<Action<T, U>> {
     // Run and record the action into the system.
     const currentAction = await this.storage.getCurrent();
     const undoData = await this.forceRun(data);
@@ -39,7 +39,7 @@ export default class Machine<T, U> {
     };
     await this.storage.set(newAction.id, newAction);
     await this.storage.setCurrent(newAction.id);
-    return newAction.id;
+    return newAction;
   }
   async undo(action: Action<T, U>, parentId?: string): Promise<void> {
     // TODO Determine if the action has a conflict - the scope between the
@@ -110,6 +110,9 @@ export default class Machine<T, U> {
       }
     }
   }
+  getCurrent(): Promise<Action<T, U>> {
+    return this.storage.getCurrent();
+  }
   async getDivergingPath(
     left: AsyncIterator<Action<T, U>>, right: AsyncIterator<Action<T, U>>,
   ): Promise<{ left: Action<T, U>[], right: Action<T, U>[] }> {
@@ -147,7 +150,7 @@ export default class Machine<T, U> {
       right: rightStack,
     };
   }
-  async jumpTo(targetId: string): Promise<void> {
+  async checkout(targetId: string): Promise<void> {
     // Get diverging path for the action, then undo on left / proceed on right.
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), this.getHistory(targetId));
@@ -193,6 +196,6 @@ export default class Machine<T, U> {
     // When the scope conflicts, check modify type - if modify type is
     // different, or is null, it's a conflict.
     // However, different modify type from same node is tolerable.
-    merge(left, right, this.config);
+    await merge(left, right, this.config);
   }
 }
