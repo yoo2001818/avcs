@@ -39,7 +39,16 @@ function getActionScopes<T, U>(
   action: Action<T, U>,
   getScopes: (data: T) => ActionScope[],
 ): ActionScope[] {
-  return getScopes(action.data);
+  if (action.type === 'normal') {
+    return getScopes(action.data);
+  }
+  const result: ActionScope[] = [];
+  action.parents.forEach((parent) => {
+    parent.data.forEach((data) => {
+      getScopes(data).forEach(scope => result.push(scope));
+    });
+  });
+  return result;
 }
 
 export default function getDomains<T, U>(

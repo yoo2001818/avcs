@@ -11,14 +11,11 @@ type UndoData = {
   values: number[],
 };
 
-function getScopes(action: Action<ActionData, UndoData>): ActionScope[] {
-  if (action.type === 'normal') {
-    return action.data.key.map(v => ({
-      keys: v,
-      modifyType: action.data.op === '=' ? null : 0,
-    }));
-  }
-  return [];
+function getScopes(data: ActionData): ActionScope[] {
+  return data.key.map(v => ({
+    keys: v,
+    modifyType: data.op === '=' ? null : 0,
+  }));
 }
 
 const machineConfig: MachineConfig<ActionData, UndoData> = {

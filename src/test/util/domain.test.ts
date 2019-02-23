@@ -1,11 +1,8 @@
 import { Action, ActionScope } from '../../type';
 import getDomains from '../../util/domain';
 
-function getScopes(action: Action<ActionScope[], {}>): ActionScope[] {
-  if (action.type === 'normal') {
-    return action.data;
-  }
-  return [];
+function getScopes(data: ActionScope[]): ActionScope[] {
+  return data;
 }
 
 function newAction(scope: ActionScope[]): Action<ActionScope[], {}> {
