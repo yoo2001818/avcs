@@ -25,6 +25,15 @@ export default class Machine<T, U> {
     }
     return output;
   }
+  async init(): Promise<Action<T, U>> {
+    const newAction: Action<T, U> = {
+      id: this.generateId(),
+      type: 'init',
+    };
+    await this.storage.set(newAction.id, newAction);
+    await this.storage.setCurrent(newAction.id);
+    return newAction;
+  }
   async run(data: T, undoId?: string): Promise<Action<T, U>> {
     // Run and record the action into the system.
     const currentAction = await this.storage.getCurrent();
@@ -84,7 +93,7 @@ export default class Machine<T, U> {
         await this.forceRunSeries(parent.data);
     }
   }
-  async * getHistory(startId?: string): AsyncIterator<Action<T, U>> {
+  async * getHistory(startId?: string): AsyncIterableIterator<Action<T, U>> {
     let action: Action<T, U>;
     if (startId != null) {
       action = await this.storage.get(startId);

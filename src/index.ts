@@ -17,6 +17,9 @@ const dataStore: any = {};
 function findNode(keys: string[], root: any) {
   return keys.reduce((prev, key, i) => {
     if (i === keys.length - 1) return prev;
+    if (prev[key] == null) {
+      prev[key] = {};
+    }
     return prev[key];
   }, root);
 }
@@ -75,7 +78,15 @@ const machine = new Machine({
 }, new MemoryStorage());
 
 async function main() {
-  await machine.run({ type: 'set', keys: ['user', 'name'], value: 'test' });
+  console.log(await machine.init());
+  console.log(await machine.run({ type: 'set', keys: ['user', 'name'], value: 'test' }));
+  console.log(await machine.run({ type: 'set', keys: ['user', 'id'], value: 0 }));
+  console.log(await machine.run({ type: 'increment', keys: ['user', 'id'] }));
+  console.log(dataStore);
+  console.log('----');
+  for await (const action of machine.getHistory()) {
+    console.log(action);
+  }
 }
 
 main();

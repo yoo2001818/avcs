@@ -2,6 +2,8 @@ export type BaseAction = {
   id: string,
 };
 
+export type InitAction = BaseAction & { type: 'init' };
+
 export type NormalAction<T, U> = BaseAction & {
   type: 'normal',
   data: T,
@@ -15,7 +17,7 @@ export type MergeAction<T, U> = BaseAction & {
   parents: { id: string, data: T[], undoData: U[] }[],
 };
 
-export type Action<T, U> = NormalAction<T, U> | MergeAction<T, U>;
+export type Action<T, U> = InitAction | NormalAction<T, U> | MergeAction<T, U>;
 
 export type ActionScope = {
   keys: (string | number)[],

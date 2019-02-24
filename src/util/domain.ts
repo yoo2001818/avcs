@@ -42,13 +42,16 @@ function getActionScopes<T, U>(
   if (action.type === 'normal') {
     return getScopes(action.data);
   }
-  const result: ActionScope[] = [];
-  action.parents.forEach((parent) => {
-    parent.data.forEach((data) => {
-      getScopes(data).forEach(scope => result.push(scope));
+  if (action.type === 'merge') {
+    const result: ActionScope[] = [];
+    action.parents.forEach((parent) => {
+      parent.data.forEach((data) => {
+        getScopes(data).forEach(scope => result.push(scope));
+      });
     });
-  });
-  return result;
+    return result;
+  }
+  return [];
 }
 
 export default function getDomains<T, U>(
