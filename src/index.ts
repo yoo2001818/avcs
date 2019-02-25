@@ -78,10 +78,17 @@ const machine = new Machine({
 }, new MemoryStorage());
 
 async function main() {
-  console.log(await machine.init());
-  console.log(await machine.run({ type: 'set', keys: ['user', 'name'], value: 'test' }));
-  console.log(await machine.run({ type: 'set', keys: ['user', 'id'], value: 0 }));
-  console.log(await machine.run({ type: 'increment', keys: ['user', 'id'] }));
+  const initAction = await machine.init();
+  await machine.run({ type: 'set', keys: ['user', 'name'], value: 'test' });
+  await machine.run({ type: 'set', keys: ['user', 'id'], value: 0 });
+  const lastAction = await machine.run({ type: 'increment', keys: ['user', 'id'] });
+  console.log(dataStore);
+  await machine.checkout(initAction.id);
+  console.log('checked out:', await machine.getCurrent());
+  await machine.run({ type: 'set', keys: ['user', 'abc'], value: 0 });
+  console.log(dataStore);
+  await machine.checkout(lastAction.id);
+  console.log('checked out:', await machine.getCurrent());
   console.log(dataStore);
   console.log('----');
   for await (const action of machine.getHistory()) {

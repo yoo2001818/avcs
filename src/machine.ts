@@ -163,12 +163,16 @@ export default class Machine<T, U> {
     // Get diverging path for the action, then undo on left / proceed on right.
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), this.getHistory(targetId));
-    for (let i = 0; i < left.length; i += 1) {
+    for (let i = 0; i < left.length - 1; i += 1) {
+      console.log('undo:', left[i].id);
       await this.forceUndo(left[i], left[i + 1].id);
     }
-    for (let i = right.length - 1; i >= 0; i -= 1) {
+    for (let i = right.length - 2; i >= 0; i -= 1) {
+      console.log('redo:', right[i].id);
       await this.forceRedo(right[i], right[i + 1].id);
     }
+    await this.storage.set(right[0].id, right[0]);
+    await this.storage.setCurrent(right[0].id);
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
