@@ -85,12 +85,14 @@ async function main() {
   console.log(dataStore);
   await machine.checkout(initAction.id);
   console.log('checked out:', await machine.getCurrent());
-  await machine.run({ type: 'set', keys: ['user', 'abc'], value: 0 });
+  const lastAction2 = await machine.run({ type: 'set', keys: ['user', 'abc'], value: 0 });
   console.log(dataStore);
   await machine.checkout(lastAction.id);
   console.log('checked out:', await machine.getCurrent());
   console.log(dataStore);
   console.log('----');
+  await machine.merge(lastAction2.id);
+  console.log(dataStore);
   for await (const action of machine.getHistory()) {
     console.log(action);
   }

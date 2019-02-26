@@ -163,6 +163,8 @@ export default class Machine<T, U> {
     // Get diverging path for the action, then undo on left / proceed on right.
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), this.getHistory(targetId));
+    left.forEach(v => console.log('left:', v.id));
+    right.forEach(v => console.log('right:', v.id));
     for (let i = 0; i < left.length - 1; i += 1) {
       console.log('undo:', left[i].id);
       await this.forceUndo(left[i], left[i + 1].id);
@@ -173,6 +175,35 @@ export default class Machine<T, U> {
     }
     await this.storage.set(right[0].id, right[0]);
     await this.storage.setCurrent(right[0].id);
+  }
+  async merge(targetId: string): Promise<Action<T, U>> {
+    const { left, right } = await this.getDivergingPath(
+      this.getHistory(), this.getHistory(targetId));
+    const leftCurrent = left[0];
+    const rightCurrent = right[0];
+    left.forEach(v => console.log('left:', v.id));
+    right.forEach(v => console.log('right:', v.id));
+    const result =
+      await merge(left.slice(0, -1), right.slice(0, -1), this.config);
+    const resultAction: Action<T, U> = {
+      id: this.generateId(),
+      type: 'merge',
+      parents: [{
+        id: leftCurrent.id,
+        data: result.left.map(v => v.type === 'normal' ? v.data : null),
+        undoData: result.left
+          .map(v => v.type === 'normal' ? v.undoData : null),
+      }, {
+        id: rightCurrent.id,
+        data: result.right.map(v => v.type === 'normal' ? v.data : null),
+        undoData: result.right
+          .map(v => v.type === 'normal' ? v.undoData : null),
+      }],
+    };
+    await this.forceRedo(resultAction, leftCurrent.id);
+    await this.storage.set(resultAction.id, resultAction);
+    await this.storage.setCurrent(resultAction.id);
+    return resultAction;
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
     // Sync protocol is the following:
