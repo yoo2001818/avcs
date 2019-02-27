@@ -2,6 +2,7 @@ import randomstring from 'randomstring';
 import { Action, MachineConfig, SyncRPCSet } from './type';
 import { Storage } from './storage';
 import { separateBulk } from './util/iterator';
+import { convertActionsToMergeData } from './util/action';
 import merge from './merge';
 
 export default class Machine<T, U> {
@@ -181,6 +182,7 @@ export default class Machine<T, U> {
       this.getHistory(), this.getHistory(targetId));
     const leftCurrent = left[0];
     const rightCurrent = right[0];
+    const mutualParent = left[left.length - 1];
     left.forEach(v => console.log('left:', v.id));
     right.forEach(v => console.log('right:', v.id));
     const result =
@@ -188,17 +190,12 @@ export default class Machine<T, U> {
     const resultAction: Action<T, U> = {
       id: this.generateId(),
       type: 'merge',
-      parents: [{
-        id: leftCurrent.id,
-        data: result.left.map(v => v.type === 'normal' ? v.data : null),
-        undoData: result.left
-          .map(v => v.type === 'normal' ? v.undoData : null),
-      }, {
-        id: rightCurrent.id,
-        data: result.right.map(v => v.type === 'normal' ? v.data : null),
-        undoData: result.right
-          .map(v => v.type === 'normal' ? v.undoData : null),
-      }],
+      parents: [
+        convertActionsToMergeData(
+          leftCurrent.id, result.left, mutualParent.id),
+        convertActionsToMergeData(
+          rightCurrent.id, result.right, mutualParent.id),
+      ],
     };
     await this.forceRedo(resultAction, leftCurrent.id);
     await this.storage.set(resultAction.id, resultAction);
