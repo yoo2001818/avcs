@@ -177,9 +177,11 @@ export default class Machine<T, U> {
     await this.storage.set(right[0].id, right[0]);
     await this.storage.setCurrent(right[0].id);
   }
-  async merge(targetId: string): Promise<Action<T, U>> {
+  async mergeImpl(
+    rightIterator: AsyncIterator<Action<T, U>>,
+  ): Promise<Action<T, U>> {
     const { left, right } = await this.getDivergingPath(
-      this.getHistory(), this.getHistory(targetId));
+      this.getHistory(), rightIterator))
     const leftCurrent = left[0];
     const rightCurrent = right[0];
     const mutualParent = left[left.length - 1];
@@ -202,7 +204,10 @@ export default class Machine<T, U> {
     await this.storage.setCurrent(resultAction.id);
     return resultAction;
   }
-  async sync(rpc: SyncRPCSet<T, U>): Promise<void> {
+  async merge(targetId: string): Promise<Action<T, U>> {
+    return this.mergeImpl(this.getHistory(targetId));
+  }
+  async sync(rpc: SyncRPCSet<T, U>): Promise<Action<T, U>> {
     // Sync protocol is the following:
     // 0. If we know the common parent, we can rewind and put into stack until
     //    it is met.
@@ -223,20 +228,14 @@ export default class Machine<T, U> {
     // the remote point.
     // To handle this, we make sync function to accept networking function set.
     let nextId: string = null;
-    const { left, right } = await this.getDivergingPath(
-      this.getHistory(),
-      separateBulk(async () => {
-        const output = await rpc.fetch(nextId);
-        if (output.length > 0) {
-          nextId = output[output.length - 1].id;
-        }
-        return output;
-      }),
-    );
-    // We have to check scopes and modify types.
-    // When the scope conflicts, check modify type - if modify type is
-    // different, or is null, it's a conflict.
-    // However, different modify type from same node is tolerable.
-    await merge(left, right, this.config);
+    const mergeResult = await this.mergeImpl(separateBulk(async () => {
+      const output = await rpc.fetch(nextId);
+      if (output.length > 0) {
+        nextId = output[output.length - 1].id;
+      }
+      return output;
+    }));
+    await rpc.submit(mergeResult);
+    return mergeResult;
   }
 }

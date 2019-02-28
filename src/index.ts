@@ -91,7 +91,11 @@ async function main() {
   console.log('checked out:', await machine.getCurrent());
   console.log(dataStore);
   console.log('----');
-  await machine.merge(lastAction2.id);
+  const mergeAction = await machine.merge(lastAction2.id);
+  console.log(dataStore);
+  await machine.checkout(initAction.id);
+  console.log(dataStore);
+  await machine.checkout(mergeAction.id);
   console.log(dataStore);
   for await (const action of machine.getHistory()) {
     console.log(action);
