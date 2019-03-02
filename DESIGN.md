@@ -296,6 +296,48 @@ from that.
 As the new entries cannot be written while merging, this algorithm should be
 locked. Or, it must run merge again after merging (local-local merge).
 
+# Converting to graph
+Most git clients are capable of displaying network graphs. In order to display
+such graph, we need to determine parents and children of each action.
+
+However, avcs only stores parent action ID, so naturally, it can only diverge.
+
+```
+*----*--*------*
+      \----*-----*
+           \-------*
+```
+
+That is, if the diverged branches shares same action, it cannot be seen as
+merged, as it requires storing every action in the memory, so it'd be two-step
+algorithm. This should be avoided if possible.
+
+Fortunately, we can limit memory usage, and furthermore, solve this in one
+pass, using chronogical ID. However, motonoically increasing chronogical ID is
+not possible in distributed environment - The system clock can be different for 
+each computer.
+
+However, this problem can be also solved if we can do topological sorting, not
+chronogical sorting. Topological sorting can be done even if we don't have
+synchronized clock.
+
+Since all actions diverge from other actions, we can just record current depth
+of the action history. Using that 'depth', we can easily determine that
+other branches hasn't followed up to current branch, so current branch can
+wait until other branches follow up.
+
+This won't record actions in time order (it's not correct anyway), but it can
+be used to avoid storing everything in memory and using two-pass algorithm.
+
+```
+6    5  4  3   2     1     0
+*----*--*------*-----*-----*
+      \-*--*--/      /
+           \---*----/
+```
+
+When merging, the merged action should have depth of `max(...action depths)`.
+
 # Wrapping up
 All right! All the requirements to build avcs are resolved. From this section,
 let's try to build a specification for avcs.
