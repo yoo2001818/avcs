@@ -30,6 +30,7 @@ export default class Machine<T, U> {
     const newAction: Action<T, U> = {
       id: this.generateId(),
       type: 'init',
+      depth: 0,
     };
     await this.storage.set(newAction.id, newAction);
     await this.storage.setCurrent(newAction.id);
@@ -46,6 +47,7 @@ export default class Machine<T, U> {
       id: this.generateId(),
       type: 'normal',
       parent: currentAction.id,
+      depth: currentAction.depth + 1,
     };
     await this.storage.set(newAction.id, newAction);
     await this.storage.setCurrent(newAction.id);
@@ -181,7 +183,7 @@ export default class Machine<T, U> {
     rightIterator: AsyncIterator<Action<T, U>>,
   ): Promise<Action<T, U>> {
     const { left, right } = await this.getDivergingPath(
-      this.getHistory(), rightIterator))
+      this.getHistory(), rightIterator);
     const leftCurrent = left[0];
     const rightCurrent = right[0];
     const mutualParent = left[left.length - 1];
@@ -192,6 +194,7 @@ export default class Machine<T, U> {
     const resultAction: Action<T, U> = {
       id: this.generateId(),
       type: 'merge',
+      depth: Math.max(leftCurrent.depth, rightCurrent.depth) + 1,
       parents: [
         convertActionsToMergeData(
           leftCurrent.id, result.left, mutualParent.id),

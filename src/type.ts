@@ -1,5 +1,6 @@
 export type BaseAction = {
   id: string,
+  depth: number,
 };
 
 export type InitAction = BaseAction & { type: 'init' };
