@@ -10,6 +10,7 @@ function newAction(scope: ActionScope[]): Action<ActionScope[], {}> {
     id: '',
     type: 'normal',
     data: scope,
+    depth: 0,
     undoData: {},
     parent: '',
   };

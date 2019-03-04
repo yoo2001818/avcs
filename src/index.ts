@@ -1,6 +1,7 @@
 import Machine from './machine';
 import MemoryStorage from './storage/memory';
 import { Action, ActionScope } from './type';
+import { getGraph } from './graph';
 
 type ActionData = {
   type: 'set' | 'delete' | 'increment' | 'decrement',
@@ -99,6 +100,10 @@ async function main() {
   console.log(dataStore);
   for await (const action of machine.getHistory()) {
     console.log(action);
+  }
+  console.log('-------');
+  for await (const entry of getGraph((v: string) => machine.getHistory(v))) {
+    console.log(entry);
   }
 }
 

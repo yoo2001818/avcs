@@ -16,14 +16,15 @@ type GraphBranch<T, U> = {
 };
 
 async function createBranch<T, U>(
-  id: string,
   getHistory: (actionId: string) => AsyncIterableIterator<Action<T, U>>,
+  id?: string,
+  prevAction?: Action<T, U>,
 ): Promise<GraphBranch<T, U>> {
   const iterator = getHistory(id);
   const result = await iterator.next();
   return {
     iterator,
-    prevAction: null,
+    prevAction: prevAction || null,
     action: result.value,
     done: result.done,
     processed: false,
@@ -44,11 +45,11 @@ function getShallowestBranchId<T, U>(branches: GraphBranch<T, U>[]): number {
 }
 
 export async function * getGraph<T, U>(
-  startId: string,
   getHistory: (actionId: string) => AsyncIterableIterator<Action<T, U>>,
+  startId?: string,
 ): AsyncIterableIterator<GraphEntry<T, U>> {
-  const branches: GraphBranch<T, U>[] =
-    [await createBranch(startId, getHistory)];
+  let branches: GraphBranch<T, U>[] =
+    [await createBranch(getHistory, startId)];
   while (branches.length > 0) {
     const branchId = getShallowestBranchId(branches);
     const branch = branches[branchId];
@@ -63,7 +64,10 @@ export async function * getGraph<T, U>(
       // same depths are present. Since all other branches should have reached
       // the same action if possible, we can just check if other branches have
       // reached there, and advance all of them.
-      const childIds: string[] = [prevAction.id];
+      const childIds: string[] = [];
+      if (prevAction != null) {
+        childIds.push(prevAction.id);
+      }
       for (let i = 0; i < branches.length; i += 1) {
         const target = branches[i];
         if (i !== branchId && !target.done && target.action.id === action.id) {
@@ -87,7 +91,8 @@ export async function * getGraph<T, U>(
     }
     if (action.type === 'merge') {
       for (let i = 1; i < action.parents.length; i += 1) {
-        branches.push(await createBranch(action.parents[i].id, getHistory));
+        branches.push(await createBranch(
+          getHistory, action.parents[i].id, action));
       }
     }
     const result = await iterator.next();
@@ -95,5 +100,8 @@ export async function * getGraph<T, U>(
     branch.action = result.value;
     branch.done = result.done;
     branch.processed = false;
+    if (branch.done) {
+      branches = branches.filter((_, i) => i !== branchId);
+    }
   }
 }

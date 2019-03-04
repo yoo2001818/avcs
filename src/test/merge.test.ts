@@ -33,6 +33,7 @@ function newAction(
   return {
     id: '',
     type: 'normal',
+    depth: 0,
     data: { key, op, value },
     undoData: { values: key.map(() => 0) },
     parent: '',
