@@ -102,8 +102,19 @@ async function main() {
     console.log(action);
   }
   console.log('-------');
+  const branches: { [key: string]: number } = {};
+  let branchCount = 0;
   for await (const entry of getGraph((v: string) => machine.getHistory(v))) {
-    console.log(entry);
+    let branch = branches[entry.action.id];
+    if (branch == null) {
+      branch = branches[entry.action.id] = branchCount;
+      branchCount += 1;
+    }
+    branches[entry.parentIds[0]] = branch;
+    const decor = Array.from({ length: branchCount },
+        (_, i) => i === branch ? '*' : '|')
+      .join(' ');
+    console.log(decor + ' ' + entry.action.id);
   }
 }
 
