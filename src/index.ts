@@ -102,19 +102,36 @@ async function main() {
     console.log(action);
   }
   console.log('-------');
-  const branches: { [key: string]: number } = {};
-  let branchCount = 0;
+  const branches: string[] = [];
   for await (const entry of getGraph((v: string) => machine.getHistory(v))) {
-    let branch = branches[entry.action.id];
-    if (branch == null) {
-      branch = branches[entry.action.id] = branchCount;
-      branchCount += 1;
+    let branchId = branches.findIndex(v => v === entry.action.id);
+    if (branchId === -1) {
+      branches.push(entry.action.id);
+      branchId = branches.length - 1;
     }
-    branches[entry.parentIds[0]] = branch;
-    const decor = Array.from({ length: branchCount },
-        (_, i) => i === branch ? '*' : '|')
-      .join(' ');
-    console.log(decor + ' ' + entry.action.id);
+    // Merge - connect between two branches
+    // | | |    | | |
+    // |/ /     | _/
+    // | |      |/
+    // | |      | |
+    const decor = branches.map((_, i) => i === branchId ? '*' : '|').join(' ');
+    console.log(`${decor} ${entry.action.id}`);
+    // Diverge - allocate new branch between them.
+    // As you can see, other branches are pushed to right - new branches
+    // are inserted right next to current branch.
+    // | |
+    // |\ \
+    // | | |
+    // |\ \ \
+    // | | | |
+    for (let i = 0; i < entry.parentIds.length; i += 1) {
+      if (i === 0) {
+        branches[branchId] = entry.parentIds[i];
+        continue;
+      }
+      branches.splice(branchId + i, 0, entry.parentIds[i]);
+      console.log(branches.map(() => '|').join(' '));
+    }
   }
 }
 
