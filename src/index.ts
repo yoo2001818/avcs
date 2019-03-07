@@ -98,24 +98,36 @@ async function main() {
   console.log(dataStore);
   await machine.checkout(mergeAction.id);
   console.log(dataStore);
+  const mergeAction2 = await machine.merge(initAction.id);
   for await (const action of machine.getHistory()) {
     console.log(action);
   }
   console.log('-------');
   const branches: string[] = [];
   for await (const entry of getGraph((v: string) => machine.getHistory(v))) {
-    let branchId = branches.findIndex(v => v === entry.action.id);
-    if (branchId === -1) {
-      branches.push(entry.action.id);
-      branchId = branches.length - 1;
-    }
     // Merge - connect between two branches
     // | | |    | | |
     // |/ /     | _/
     // | |      |/
     // | |      | |
-    const decor = branches.map((_, i) => i === branchId ? '*' : '|').join(' ');
-    console.log(`${decor} ${entry.action.id}`);
+    let branchId: number = null;
+    for (let i = 0; i < branches.length; i += 1) {
+      if (branches[i] === entry.action.id) {
+        if (branchId === null) {
+          branchId = i;
+        } else {
+          console.log('Merge');
+        }
+      }
+    }
+    if (branchId === null) {
+      branches.push(entry.action.id);
+      branchId = branches.length - 1;
+    }
+    console.log(
+      branches.map(v => v === entry.action.id ? '*' : '|').join(' ') +
+      ' ' +
+      entry.action.id);
     // Diverge - allocate new branch between them.
     // As you can see, other branches are pushed to right - new branches
     // are inserted right next to current branch.
@@ -129,6 +141,9 @@ async function main() {
         branches[branchId] = entry.parentIds[i];
         continue;
       }
+      console.log(
+        branches.slice(0, branchId + 1).map(() => '|').join(' ') +
+        branches.slice(branchId).map(() => '\\').join(' '));
       branches.splice(branchId + i, 0, entry.parentIds[i]);
       console.log(branches.map(() => '|').join(' '));
     }
