@@ -116,7 +116,12 @@ async function main() {
         if (branchId === null) {
           branchId = i;
         } else {
-          console.log('Merge');
+          console.log(
+            branches.slice(0, branchId + 1).map(() => '|').join(' ') +
+            branches.slice(branchId + 1).map(() => '/').join(' '));
+          branches.splice(i, 1);
+          i -= 1;
+          console.log(branches.map(() => '|').join(' '));
         }
       }
     }
