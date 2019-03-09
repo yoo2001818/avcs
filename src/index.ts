@@ -98,7 +98,8 @@ async function main() {
   console.log(dataStore);
   await machine.checkout(mergeAction.id);
   console.log(dataStore);
-  const mergeAction2 = await machine.merge(initAction.id);
+  const mergeAction2 = await machine.merge(lastAction.id);
+  const mergeAction3 = await machine.merge(initAction.id);
   for await (const action of machine.getHistory()) {
     console.log(action);
   }
@@ -116,12 +117,40 @@ async function main() {
         if (branchId === null) {
           branchId = i;
         } else {
-          console.log(
-            branches.slice(0, branchId + 1).map(() => '|').join(' ') +
-            branches.slice(branchId + 1).map(() => '/').join(' '));
-          branches.splice(i, 1);
-          i -= 1;
-          console.log(branches.map(() => '|').join(' '));
+          if (i === branchId + 1) {
+            // Merge (zipper)
+            // | |
+            // |/
+            // |
+            console.log(
+              branches.slice(0, branchId + 1).map(() => '|').join(' ') +
+              branches.slice(branchId + 1).map(() => '/').join(' '));
+            branches.splice(i, 1);
+            i -= 1;
+            console.log(branches.map(() => '|').join(' '));
+          } else {
+            // Merge (cross)
+            // | | |
+            // | _/
+            // |/|
+            // | |
+            console.log(
+              branches.slice(0, branchId + 1).map(() => '|').join(' ') +
+              ' ' +
+              branches.slice(branchId + 1, i).map(() => '__').join('') +
+              '/ ' +
+              branches.slice(i + 1).map(() => '|').join(' ')
+            );
+            branches.splice(i, 1);
+            i -= 1;
+            console.log(
+              branches.slice(0, branchId + 1).map(() => '|').join(' ') +
+              '/' +
+              branches.slice(branchId + 1, i + 1).map(() => ' ').join(' ') +
+              '  ' +
+              branches.slice(i + 1).map(() => '/').join(' ')
+            );
+          }
         }
       }
     }
