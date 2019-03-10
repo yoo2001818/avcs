@@ -1,7 +1,8 @@
 import Machine from './machine';
 import MemoryStorage from './storage/memory';
 import { Action, ActionScope } from './type';
-import { getGraph } from './graph';
+import { getGraph } from './util/graph';
+import printLog from './util/printLog';
 
 type ActionData = {
   type: 'set' | 'delete' | 'increment' | 'decrement',
@@ -104,83 +105,11 @@ async function main() {
     console.log(action);
   }
   console.log('-------');
-  const branches: string[] = [];
-  for await (const entry of getGraph((v: string) => machine.getHistory(v))) {
-    // Merge - connect between two branches
-    // | | |    | | |
-    // |/ /     | _/
-    // | |      |/
-    // | |      | |
-    let branchId: number = null;
-    for (let i = 0; i < branches.length; i += 1) {
-      if (branches[i] === entry.action.id) {
-        if (branchId === null) {
-          branchId = i;
-        } else {
-          if (i === branchId + 1) {
-            // Merge (zipper)
-            // | |
-            // |/
-            // |
-            console.log(
-              branches.slice(0, branchId + 1).map(() => '|').join(' ') +
-              branches.slice(branchId + 1).map(() => '/').join(' '));
-            branches.splice(i, 1);
-            i -= 1;
-            console.log(branches.map(() => '|').join(' '));
-          } else {
-            // Merge (cross)
-            // | | |
-            // | _/
-            // |/|
-            // | |
-            console.log(
-              branches.slice(0, branchId + 1).map(() => '|').join(' ') +
-              ' ' +
-              branches.slice(branchId + 1, i).map(() => '__').join('') +
-              '/ ' +
-              branches.slice(i + 1).map(() => '|').join(' ')
-            );
-            branches.splice(i, 1);
-            i -= 1;
-            console.log(
-              branches.slice(0, branchId + 1).map(() => '|').join(' ') +
-              '/' +
-              branches.slice(branchId + 1, i + 1).map(() => ' ').join(' ') +
-              '  ' +
-              branches.slice(i + 1).map(() => '/').join(' ')
-            );
-          }
-        }
-      }
-    }
-    if (branchId === null) {
-      branches.push(entry.action.id);
-      branchId = branches.length - 1;
-    }
-    console.log(
-      branches.map(v => v === entry.action.id ? '*' : '|').join(' ') +
-      ' ' +
-      entry.action.id);
-    // Diverge - allocate new branch between them.
-    // As you can see, other branches are pushed to right - new branches
-    // are inserted right next to current branch.
-    // | |
-    // |\ \
-    // | | |
-    // |\ \ \
-    // | | | |
-    for (let i = 0; i < entry.parentIds.length; i += 1) {
-      if (i === 0) {
-        branches[branchId] = entry.parentIds[i];
-        continue;
-      }
-      console.log(
-        branches.slice(0, branchId + 1).map(() => '|').join(' ') +
-        branches.slice(branchId).map(() => '\\').join(' '));
-      branches.splice(branchId + i, 0, entry.parentIds[i]);
-      console.log(branches.map(() => '|').join(' '));
-    }
+  const linePrinter = printLog(
+    action => action.id.slice(0, 7),
+    getGraph(machine.getHistory.bind(machine)));
+  for await (const line of linePrinter) {
+    console.log(line);
   }
 }
 

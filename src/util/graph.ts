@@ -1,7 +1,6 @@
-import { Action } from './type';
-import { ok } from 'assert';
+import { Action } from '../type';
 
-type GraphEntry<T, U> = {
+export type GraphEntry<T, U> = {
   parentIds: string[],
   childIds: string[],
   action: Action<T, U>,

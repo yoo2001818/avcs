@@ -166,14 +166,10 @@ export default class Machine<T, U> {
     // Get diverging path for the action, then undo on left / proceed on right.
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), this.getHistory(targetId));
-    left.forEach(v => console.log('left:', v.id));
-    right.forEach(v => console.log('right:', v.id));
     for (let i = 0; i < left.length - 1; i += 1) {
-      console.log('undo:', left[i].id);
       await this.forceUndo(left[i], left[i + 1].id);
     }
     for (let i = right.length - 2; i >= 0; i -= 1) {
-      console.log('redo:', right[i].id);
       await this.forceRedo(right[i], right[i + 1].id);
     }
     await this.storage.set(right[0].id, right[0]);
@@ -187,8 +183,6 @@ export default class Machine<T, U> {
     const leftCurrent = left[0];
     const rightCurrent = right[0];
     const mutualParent = left[left.length - 1];
-    left.forEach(v => console.log('left:', v.id));
-    right.forEach(v => console.log('right:', v.id));
     const result =
       await merge(left.slice(0, -1), right.slice(0, -1), this.config);
     const resultAction: Action<T, U> = {
