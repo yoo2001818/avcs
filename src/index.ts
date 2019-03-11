@@ -106,7 +106,18 @@ async function main() {
   }
   console.log('-------');
   const linePrinter = printLog(
-    action => action.id.slice(0, 7),
+    (action: Action<ActionData, ActionUndoData>) => {
+      switch (action.type) {
+        case 'init':
+          return action.id.slice(0, 7) + ' Init';
+        case 'merge':
+          return action.id.slice(0, 7) + ' Merge';
+        case 'normal':
+          return action.id.slice(0, 7) + ' ' +
+            action.data.type + ':  ' +
+            action.data.keys.join('.');
+      }
+    },
     getGraph(machine.getHistory.bind(machine)));
   for await (const line of linePrinter) {
     console.log(line);

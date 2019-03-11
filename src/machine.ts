@@ -182,6 +182,24 @@ export default class Machine<T, U> {
       this.getHistory(), rightIterator);
     const leftCurrent = left[0];
     const rightCurrent = right[0];
+    if (left.length === 1) {
+      // Fast forward
+      for (let i = right.length - 2; i >= 0; i -= 1) {
+        await this.forceRedo(right[i], right[i + 1].id);
+      }
+      await this.storage.set(rightCurrent.id, rightCurrent);
+      await this.storage.setCurrent(rightCurrent.id);
+      return rightCurrent;
+    }
+    if (right.length === 1) {
+      // Fast forward
+      for (let i = left.length - 2; i >= 0; i -= 1) {
+        await this.forceRedo(left[i], left[i + 1].id);
+      }
+      await this.storage.set(leftCurrent.id, leftCurrent);
+      await this.storage.setCurrent(leftCurrent.id);
+      return leftCurrent;
+    }
     const mutualParent = left[left.length - 1];
     const result =
       await merge(left.slice(0, -1), right.slice(0, -1), this.config);
