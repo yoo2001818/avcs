@@ -62,18 +62,18 @@ function mergeBuckets<T>(buckets: T[][], getValue: (value: T) => number) {
 
 type MergePair<V> = { left: V, right: V };
 
-type MergeContext<T, U> = {
-  config: MachineConfig<T, U>,
+type MergeContext<T, U, V> = {
+  config: MachineConfig<T, U, V>,
   root: MergePair<ActionDomain<T, U>>,
   output: MergePair<Action<T, U>[]>,
   skipNodes: MergePair<{ [key: number]: true }>,
 };
 
-export async function mergeLevel<T, U>(
+export async function mergeLevel<T, U, V>(
   path: (string | number)[],
   left: ActionDomain<T, U> | null,
   right: ActionDomain<T, U> | null,
-  context: MergeContext<T, U>,
+  context: MergeContext<T, U, V>,
 ): Promise<MergePair<Action<T, U>[]>> {
   /*
    * L/R    null     alias    trig   norm     empty
@@ -178,10 +178,10 @@ export async function mergeLevel<T, U>(
   return context.output;
 }
 
-export default async function merge<T, U>(
+export default async function merge<T, U, V>(
   left: Action<T, U>[],
   right: Action<T, U>[],
-  config: MachineConfig<T, U>,
+  config: MachineConfig<T, U, V>,
 ) {
   const leftRoot = getDomain(left, config.getScopes);
   const rightRoot = getDomain(right, config.getScopes);

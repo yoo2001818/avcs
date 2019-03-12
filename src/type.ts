@@ -25,15 +25,16 @@ export type ActionScope = {
   modifyType: number | null,
 };
 
-export type MachineConfig<T, U> = {
+export type MachineConfig<T, U, V> = {
   getScopes: (data: T) => ActionScope[],
   getReverse: (data: T, undoData: U) => T,
   merge: (
     offending: (string | number)[][],
     left: Action<T, U>[],
     right: Action<T, U>[],
+    config?: V,
   ) => Promise<{ left: Action<T, U>[], right: Action<T, U>[] }>,
-  run: (payload: T) => Promise<U>,
+  run: (payload: T, config?: V) => Promise<U>,
 };
 
 export type SyncRPCSet<T, U> = {

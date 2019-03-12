@@ -5,24 +5,24 @@ import { separateBulk } from './util/iterator';
 import { convertActionsToMergeData } from './util/action';
 import merge from './merge';
 
-export default class Machine<T, U> {
-  config: MachineConfig<T, U>;
+export default class Machine<T, U, V> {
+  config: MachineConfig<T, U, V>;
   storage: Storage<T, U>;
-  constructor(config: MachineConfig<T, U>, storage: Storage<T, U>) {
+  constructor(config: MachineConfig<T, U, V>, storage: Storage<T, U>) {
     this.config = config;
     this.storage = storage;
   }
   generateId(): string {
     return randomstring.generate();
   }
-  async forceRun(data: T): Promise<U> {
-    return this.config.run(data);
+  async forceRun(data: T, config?: V): Promise<U> {
+    return this.config.run(data, config);
   }
-  async forceRunSeries(data: T[]): Promise<U[]> {
+  async forceRunSeries(data: T[], config?: V): Promise<U[]> {
     // TODO Transactions
     const output: U[] = [];
     for (const entry of data) {
-      output.push(await this.config.run(entry));
+      output.push(await this.config.run(entry, config));
     }
     return output;
   }
@@ -36,10 +36,10 @@ export default class Machine<T, U> {
     await this.storage.setCurrent(newAction.id);
     return newAction;
   }
-  async run(data: T, undoId?: string): Promise<Action<T, U>> {
+  async run(data: T, config?: V, undoId?: string): Promise<Action<T, U>> {
     // Run and record the action into the system.
     const currentAction = await this.storage.getCurrent();
-    const undoData = await this.forceRun(data);
+    const undoData = await this.forceRun(data, config);
     const newAction: Action<T, U> = {
       data,
       undoData,
@@ -53,24 +53,33 @@ export default class Machine<T, U> {
     await this.storage.setCurrent(newAction.id);
     return newAction;
   }
-  async undo(action: Action<T, U>, parentId?: string): Promise<void> {
+  async undo(
+    action: Action<T, U>,
+    config?: V,
+    parentId?: string,
+  ): Promise<void> {
     // TODO Determine if the action has a conflict - the scope between the
     // reversed action, and history until the action, should be compared.
     switch (action.type) {
       case 'normal':
         await this.run(
-          this.config.getReverse(action.data, action.undoData), action.id);
+          this.config.getReverse(action.data, action.undoData),
+            config, action.id);
         break;
       case 'merge':
         // TODO Which parent should be followed? In this case, the undo must
         // receive WHICH branch to undo.
     }
   }
-  async forceUndo(action: Action<T, U>, parentId?: string): Promise<void> {
+  async forceUndo(
+    action: Action<T, U>,
+    config?: V,
+    parentId?: string,
+  ): Promise<void> {
     switch (action.type) {
       case 'normal':
         await this.forceRun(
-          this.config.getReverse(action.data, action.undoData));
+          this.config.getReverse(action.data, action.undoData), config);
         break;
       case 'merge':
         const parent = action.parents.find(v => v.id === parentId);
@@ -78,22 +87,26 @@ export default class Machine<T, U> {
           throw new Error(`Unknown parent ID ${parentId}`);
         }
         await this.forceRunSeries(parent.data.map((item, i) =>
-          this.config.getReverse(item, parent.undoData[i])));
+          this.config.getReverse(item, parent.undoData[i])), config);
     }
   }
-  async forceRedo(action: Action<T, U>, parentId?: string): Promise<void> {
+  async forceRedo(
+    action: Action<T, U>,
+    config?: V,
+    parentId?: string,
+  ): Promise<void> {
     // NOTE this reruns the given action, meaning that it doesn't reverse the
     // action. Therefore undoed action can't be passed into here.
     switch (action.type) {
       case 'normal':
-        await this.forceRun(action.data);
+        await this.forceRun(action.data, config);
         break;
       case 'merge':
         const parent = action.parents.find(v => v.id === parentId);
         if (parent == null) {
           throw new Error(`Unknown parent ID ${parentId}`);
         }
-        await this.forceRunSeries(parent.data);
+        await this.forceRunSeries(parent.data, config);
     }
   }
   async * getHistory(startId?: string): AsyncIterableIterator<Action<T, U>> {
@@ -162,21 +175,22 @@ export default class Machine<T, U> {
       right: rightStack,
     };
   }
-  async checkout(targetId: string): Promise<void> {
+  async checkout(targetId: string, config?: V): Promise<void> {
     // Get diverging path for the action, then undo on left / proceed on right.
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), this.getHistory(targetId));
     for (let i = 0; i < left.length - 1; i += 1) {
-      await this.forceUndo(left[i], left[i + 1].id);
+      await this.forceUndo(left[i], config, left[i + 1].id);
     }
     for (let i = right.length - 2; i >= 0; i -= 1) {
-      await this.forceRedo(right[i], right[i + 1].id);
+      await this.forceRedo(right[i], config, right[i + 1].id);
     }
     await this.storage.set(right[0].id, right[0]);
     await this.storage.setCurrent(right[0].id);
   }
   async mergeImpl(
     rightIterator: AsyncIterator<Action<T, U>>,
+    config?: V,
   ): Promise<Action<T, U>> {
     const { left, right } = await this.getDivergingPath(
       this.getHistory(), rightIterator);
@@ -185,7 +199,7 @@ export default class Machine<T, U> {
     if (left.length === 1) {
       // Fast forward
       for (let i = right.length - 2; i >= 0; i -= 1) {
-        await this.forceRedo(right[i], right[i + 1].id);
+        await this.forceRedo(right[i], config, right[i + 1].id);
       }
       await this.storage.set(rightCurrent.id, rightCurrent);
       await this.storage.setCurrent(rightCurrent.id);
@@ -194,7 +208,7 @@ export default class Machine<T, U> {
     if (right.length === 1) {
       // Fast forward
       for (let i = left.length - 2; i >= 0; i -= 1) {
-        await this.forceRedo(left[i], left[i + 1].id);
+        await this.forceRedo(left[i], config, left[i + 1].id);
       }
       await this.storage.set(leftCurrent.id, leftCurrent);
       await this.storage.setCurrent(leftCurrent.id);
@@ -214,13 +228,13 @@ export default class Machine<T, U> {
           rightCurrent.id, result.right, mutualParent.id),
       ],
     };
-    await this.forceRedo(resultAction, leftCurrent.id);
+    await this.forceRedo(resultAction, config, leftCurrent.id);
     await this.storage.set(resultAction.id, resultAction);
     await this.storage.setCurrent(resultAction.id);
     return resultAction;
   }
-  async merge(targetId: string): Promise<Action<T, U>> {
-    return this.mergeImpl(this.getHistory(targetId));
+  async merge(targetId: string, config?: V): Promise<Action<T, U>> {
+    return this.mergeImpl(this.getHistory(targetId), config);
   }
   async sync(rpc: SyncRPCSet<T, U>): Promise<Action<T, U>> {
     // Sync protocol is the following:
