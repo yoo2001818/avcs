@@ -104,6 +104,7 @@ async function main() {
   for await (const action of machine.getHistory()) {
     console.log(action);
   }
+  await machine.run({ type: 'set', keys: ['user', 'def'], value: 0 });
   console.log('-------');
   const linePrinter = printLog(
     (action: Action<ActionData, ActionUndoData>) => {

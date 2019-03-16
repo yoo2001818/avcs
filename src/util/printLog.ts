@@ -28,7 +28,6 @@ export default async function * printLog<T, U>(
               branches.slice(branchId + 1).map(() => '/').join(' '));
             branches.splice(i, 1);
             i -= 1;
-            yield branches.map(() => '|').join(' ');
           } else {
             // Merge (cross)
             // | | |
@@ -38,7 +37,7 @@ export default async function * printLog<T, U>(
             yield (
               branches.slice(0, branchId + 1).map(() => '|').join(' ') +
               ' ' +
-              branches.slice(branchId + 1, i).map(() => '__').join('') +
+              branches.slice(branchId + 1, i).map(() => '|_').join('') +
               '/ ' +
               branches.slice(i + 1).map(() => '|').join(' ')
             );
@@ -47,7 +46,7 @@ export default async function * printLog<T, U>(
             yield (
               branches.slice(0, branchId + 1).map(() => '|').join(' ') +
               '/' +
-              branches.slice(branchId + 1, i + 1).map(() => ' ').join(' ') +
+              branches.slice(branchId + 1, i + 1).map(() => '|').join(' ') +
               '  ' +
               branches.slice(i + 1).map(() => '/').join(' ')
             );
@@ -80,7 +79,6 @@ export default async function * printLog<T, U>(
         branches.slice(0, branchId + 1).map(() => '|').join(' ') +
         branches.slice(branchId).map(() => '\\').join(' '));
       branches.splice(branchId + i, 0, entry.parentIds[i]);
-      yield branches.map(() => '|').join(' ');
     }
   }
 }
