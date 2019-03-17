@@ -70,6 +70,12 @@ export default async function * printLog<T, U>(
     // | | |
     // |\ \ \
     // | | | |
+    if (entry.parentIds.length === 0) {
+      yield (
+        branches.slice(0, branchId).map(() => '|').join(' ') + '  ' +
+        branches.slice(branchId + 1).map(() => '/').join(' '));
+      branches.splice(branchId, 1);
+    }
     for (let i = 0; i < entry.parentIds.length; i += 1) {
       if (i === 0) {
         branches[branchId] = entry.parentIds[i];
